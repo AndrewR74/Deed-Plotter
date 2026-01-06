@@ -25,6 +25,9 @@ Key features include:
 
 Demo: https://845.ddns.net/deed-plotter.html
 
+<img width="1854" height="797" alt="image" src="https://github.com/user-attachments/assets/59709288-624e-4a60-90bb-9cf5f7e29287" />
+
+
 ## Disclosure / Disclaimer
 
 I am not a licensed professional surveyor and not a mathematician. I am a hobbyist with an interest in land records, mapping, and geometry, and this tool was created for personal exploration and educational purposes while researching my own property corners.
