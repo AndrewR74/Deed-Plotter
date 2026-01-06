@@ -1,0 +1,3470 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deed Direction Converter with KML Export</title>
+
+    <style>
+        :root {
+            --bg: #f6f7f8;
+            --panel: #ffffff;
+            --border: #d0d4d9;
+            --text: #1f2933;
+            --muted: #6b7280;
+            --accent: #1f4fd8;
+            --accent-soft: #e8edff;
+            --danger: #b91c1c;
+            --radius: 6px;
+            --mono: "Segoe UI", Tahoma, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: var(--mono);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        h2 {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+        }
+
+        h3 {
+            margin: 24px 0 12px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+        }
+
+        h4 {
+            margin: 0 0 8px;
+            font-weight: 600;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+            button.secondary {
+                background: #4b5563;
+            }
+
+            button:hover {
+                opacity: 0.9;
+            }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        textarea {
+            min-height: 140px;
+            font-family: monospace;
+        }
+
+        small {
+            color: var(--muted);
+            display: block;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+            .checkbox input {
+                width: auto;
+            }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #mainLayout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        #tableWrapper {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: white;
+            padding: 8px;
+            overflow-x: auto;
+        }
+
+        #canvasWrapper {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: white;
+            padding: 8px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+        }
+
+        .widgets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .widget {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+        }
+
+            .widget p {
+                margin-top: 8px;
+                font-weight: 600;
+            }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        #canvasWrapper {
+            flex: 1 1 40%;
+            min-width: 280px;
+            background: #fff;
+            border: 1px solid #d0d4d9;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        /* The canvas element itself */
+        #drawingCanvas {
+            width: 100%; /* dynamic width */
+            height: 720px; /* fixed height */
+            display: block;
+            border: 1px solid #aaa;
+            background: white;
+        }
+
+
+        /* Aspect-ratio controller */
+        .canvasSizer {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3; /* change to 1 / 1 if you prefer */
+            min-height: 260px;
+        }
+
+        /* Critical fix for grid/flex overflow */
+        .grid > *,
+        .panel > *,
+        .widget > * {
+            min-width: 0;
+        }
+
+        /* Inputs must be box-sized */
+        input,
+        textarea {
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+
+        /* =========================
+   Mobile layout adjustments
+   ========================= */
+        @media (max-width: 768px) {
+
+            body {
+                padding: 12px;
+            }
+
+            /* Stack table + canvas vertically */
+            #mainLayout {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            #tableWrapper,
+            #canvasWrapper {
+                padding: 6px;
+            }
+
+            /* Let tables scroll horizontally if needed */
+            #tableWrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Canvas should scale with screen height */
+            #drawingCanvas2 {
+                height: 60vh; /* responsive instead of fixed 720px */
+                max-height: 420px; /* prevents it from dominating the screen */
+            }
+
+            #drawingCanvas {
+                width: 100%;
+                height: 60vh; /* or whatever responsive height you want */
+                max-height: 420px;
+                display: block;
+            }
+
+            /* Toolbars & actions wrap naturally */
+            .toolbar,
+            .actions {
+                flex-wrap: wrap;
+            }
+
+            button {
+                flex: 1 1 auto;
+            }
+        }
+
+
+    </style>
+
+
+    <script xtype="module">
+        //import LatLon from 'https://cdn.jsdelivr.net/npm/geodesy@2.3.0/latlon-spherical.js';
+
+        // --------------------
+        // Local EN projection helpers (SURVEY-CORRECT)
+        // --------------------
+
+        const WGS84_R = 6378137.0; // meters
+
+        function toRad(d) { return d * Math.PI / 180; }
+        function toDeg(r) { return r * 180 / Math.PI; }
+
+        // Convert azimuth + distance to EN offsets
+        //function traverseDelta(distanceMeters, azimuthDeg) {
+        //    const az = toRad(azimuthDeg);
+        //    return {
+        //        dN: distanceMeters * Math.cos(az),
+        //        dE: distanceMeters * Math.sin(az)
+        //    };
+        //}
+
+        // Project local EN offsets to lat/lon at origin
+        //function projectENtoLatLon(originLat, originLon, dN, dE) {
+        //    const latRad = toRad(originLat);
+
+        //    const dLat = dN / WGS84_R;
+        //    const dLon = dE / (WGS84_R * Math.cos(latRad));
+
+        //    return {
+        //        lat: originLat + toDeg(dLat),
+        //        lon: originLon + toDeg(dLon)
+        //    };
+        //}
+
+
+        // — Slope calculators
+        function calculateSlopeByElevation() {
+            const e1 = parseFloat(document.getElementById('elev1').value);
+            const e2 = parseFloat(document.getElementById('elev2').value);
+            const horiz = parseFloat(document.getElementById('horizontalDist1').value);
+            if (isNaN(e1) || isNaN(e2) || isNaN(horiz) || horiz <= 0) {
+                document.getElementById('elevResult').innerText = 'Please enter valid numbers.';
+                return;
+            }
+            const delta = e2 - e1;
+            const slopeDist = Math.sqrt(horiz * horiz + delta * delta);
+            const slopePct = (delta / horiz) * 100;
+            document.getElementById('elevResult').innerText =
+                `Elevation Difference: ${delta.toFixed(2)} ft\n` +
+                `Slope Distance: ${slopeDist.toFixed(2)} ft\n` +
+                `Grade: ${slopePct.toFixed(2)}%`;
+        }
+
+        function calculateSlopeByAngle() {
+            const angleDeg = parseFloat(document.getElementById('slopeAngle').value);
+            const horiz = parseFloat(document.getElementById('horizontalDist2').value);
+            if (isNaN(angleDeg) || isNaN(horiz) || horiz <= 0) {
+                document.getElementById('angleResult').innerText = 'Please enter valid numbers.';
+                return;
+            }
+            const angleRad = angleDeg * Math.PI / 180;
+            const slopeDist = horiz / Math.cos(angleRad);
+            const rise = horiz * Math.tan(angleRad);
+            const slopePct = (rise / horiz) * 100;
+            document.getElementById('angleResult').innerText =
+                `Slope Distance: ${slopeDist.toFixed(2)} ft\n` +
+                `Vertical Difference: ${rise.toFixed(2)} ft\n` +
+                `Grade: ${slopePct.toFixed(2)}%`;
+        }
+
+        // — Bearing parser & geometry
+
+        function parseBearingAndDistance_old(str) {
+            if (!str) return null;
+            str = str.toUpperCase()
+                .replace(/[’‘]/g, "'")
+                .replace(/[”“]/g, '"')
+                .replace(/[–—]/g, '-')
+                .replace(/[,;]+/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            let distance = 0;
+            const distMatch = str.match(/(\d+(\.\d+)?)\s*(F|FT|FEET)\s*$/);
+            if (distMatch) {
+                distance = parseFloat(distMatch[1]);
+                str = str.replace(distMatch[0], '').trim();
+            } else {
+                const plainDist = str.match(/(\d+(\.\d+)?)$/);
+                if (plainDist) {
+                    distance = parseFloat(plainDist[1]);
+                    str = str.replace(plainDist[1], '').trim();
+                }
+            }
+
+            const dirMatch = str.match(/^([NS])\s*(.*?)([EW])?$/);
+            if (!dirMatch) return null;
+            const start = dirMatch[1];
+            let middle = dirMatch[2].trim();
+            let end = dirMatch[3];
+            if (!end) end = (start === 'N') ? 'E' : 'W';
+
+            let deg = 0, min = 0, sec = 0;
+            if (middle.includes('.')) {
+                const d = middle.split('.');
+                deg = parseFloat(d[0]) || 0;
+                if (d.length >= 2) min = parseFloat(d[1]) || 0;
+                if (d.length >= 3) sec = parseFloat(d[2]) || 0;
+            } else {
+                const nums = middle.split(' ').map(n => parseFloat(n)).filter(n => !isNaN(n));
+                if (nums.length >= 1) deg = nums[0];
+                if (nums.length >= 2) min = nums[1];
+                if (nums.length >= 3) sec = nums[2];
+            }
+
+            const azimuth = quadrantToAzimuth(start, deg, min, sec, end);
+            if (azimuth === null) return null;
+
+            return { distance, deg, min, sec, azimuth, ns: start, ew: end };
+        }
+
+        function parseBearingAndDistance(str) {
+            if (!str) return null;
+
+            // ---------- normalize ----------
+            let s = str.toUpperCase()
+                .replace(/[’‘′]/g, "'")     // normalize prime
+                .replace(/[”“″]/g, '"')     // normalize double-prime
+                .replace(/[–—]/g, '-')      // normalize dash
+                .replace(/[,;]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const M2FT = 3.28084;
+
+            function parseNumber(x) {
+                const v = parseFloat(x);
+                return Number.isFinite(v) ? v : null;
+            }
+
+            function unitToFeet(value, unitRaw) {
+                const unit = (unitRaw || '').toUpperCase();
+                if (!Number.isFinite(value)) return null;
+
+                // meters
+                if (unit === 'M' || unit === 'METER' || unit === 'METERS') return value * M2FT;
+
+                // feet / default
+                return value; // FT/F/FEET/' -> already feet
+            }
+
+            // ---------- helper: parse bearing (many formats) ----------
+            function parseBearingOnly(bearingText) {
+                if (!bearingText) return null;
+
+                let b = bearingText.toUpperCase()
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                // Examples supported:
+                // N31°06'10"E
+                // N31 06 10 E
+                // N31.06.10E
+                // N 31 06 10 E
+                // N31°06′10″E (after normalization becomes N31°06'10"E)
+
+                // First, try a very permissive "quadrant bearing" capture
+                // Capture NS ... EW, keep middle as "angle blob"
+                const qb = b.match(/^([NS])\s*(.+?)\s*([EW])$/);
+                if (!qb) return null;
+
+                const ns = qb[1];
+                const ew = qb[3];
+                let angleBlob = qb[2].trim();
+
+                // Normalize separators in the middle
+                angleBlob = angleBlob
+                    .replace(/DEG|DEGREES/g, '°')
+                    .replace(/MIN|MINS|MINUTES/g, "'")
+                    .replace(/SEC|SECS|SECONDS/g, '"')
+                    .replace(/:/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                let deg = 0, min = 0, sec = 0;
+
+                // If uses dot-compact D.M.S like 31.06.10
+                if (/^\d+(\.\d+){1,2}$/.test(angleBlob)) {
+                    const parts = angleBlob.split('.').map(p => parseNumber(p));
+                    deg = parts[0] || 0;
+                    min = parts[1] || 0;
+                    sec = parts[2] || 0;
+                } else {
+                    // Pull numbers in order: deg, min, sec (symbols optional)
+                    // Works for: 31°06'10", 31 06 10, 31°06, etc.
+                    const nums = angleBlob.match(/\d+(?:\.\d+)?/g)?.map(parseFloat) || [];
+                    if (nums.length >= 1) deg = nums[0] || 0;
+                    if (nums.length >= 2) min = nums[1] || 0;
+                    if (nums.length >= 3) sec = nums[2] || 0;
+                }
+
+                const azimuth = quadrantToAzimuth(ns, deg, min, sec, ew);
+                if (azimuth === null || !Number.isFinite(azimuth)) return null;
+
+                return { ns, ew, deg, min, sec, azimuth };
+            }
+
+            // ---------- detect + parse curve ----------
+            // Example: CR=109.12' ARC=73.56' (RT)
+            // Also accept: CURVE R=..., R=..., ARC=..., A=...
+            const hasCurveHint = /\b(CR|CURVE|R=|ARC|A=)\b/.test(s);
+
+            if (hasCurveHint) {
+                // Radius: CR=109.12'  OR  R=109.12'  OR  CURVE R=109.12'
+                // Accept units: FT/F/FEET/' or M/METERS/METER or none (default feet)
+                const rMatch = s.match(/\b(?:CR|R|CURVE\s*R)\s*=?\s*([0-9]+(?:\.[0-9]+)?)\s*(FT|F|FEET|M|METER|METERS|')?/);
+                const aMatch = s.match(/\b(?:ARC|A)\s*=?\s*([0-9]+(?:\.[0-9]+)?)\s*(FT|F|FEET|M|METER|METERS|')?/);
+
+                const rVal = rMatch ? parseNumber(rMatch[1]) : null;
+                const aVal = aMatch ? parseNumber(aMatch[1]) : null;
+
+                if (Number.isFinite(rVal) && Number.isFinite(aVal)) {
+                    const radiusFt = unitToFeet(rVal, rMatch?.[2] || null); // default feet
+                    const arcFt = unitToFeet(aVal, aMatch?.[2] || null);
+
+                    // Direction: (RT)/(LT) or RIGHT/LEFT
+                    let dir = null;
+                    const dirMatch = s.match(/\b(RT|RIGHT|LT|LEFT)\b/);
+                    if (dirMatch) {
+                        dir = (dirMatch[1].startsWith('R')) ? 'R' : 'L';
+                    }
+
+                    // Optional chord bearing if present somewhere like: CHB N12°34'56"E
+                    // Optional chord distance if present: CHD=...
+                    // (Not required for your example; included for future-proofing.)
+                    let chordBearing = null;
+                    const chbMatch = s.match(/\bCHB\s*[:=]?\s*([NS].+?[EW])\b/);
+                    if (chbMatch) chordBearing = parseBearingOnly(chbMatch[1]);
+
+                    let chordFt = null;
+                    const chdMatch = s.match(/\bCHD\s*[:=]?\s*([0-9]+(?:\.[0-9]+)?)\s*(FT|F|FEET|M|METER|METERS|')?/);
+                    if (chdMatch) chordFt = unitToFeet(parseNumber(chdMatch[1]), chdMatch[2] || null);
+
+                    return {
+                        kind: 'curve',
+                        radiusFt,
+                        arcFt,
+                        direction: dir,          // 'R' | 'L' | null
+                        chordBearing,            // {ns,ew,deg,min,sec,azimuth} | null
+                        chordFt                  // number | null
+                    };
+                }
+                // If it *looked* like a curve but didn't parse cleanly, fall through to line parsing.
+            }
+
+            // ---------- parse line distance (trailing distance) ----------
+            // Supports:
+            // 173.36'
+            // 173.36 FT / FEET / F
+            // 52.00 M / METERS
+            // or no unit (default feet)
+            let distanceFt = null;
+            let distUnit = null;
+
+            // distance at end (optionally with feet symbol ' or unit)
+            const distMatch = s.match(/([0-9]+(?:\.[0-9]+)?)\s*(FT|F|FEET|M|METER|METERS|')?\s*$/);
+            if (distMatch) {
+                const val = parseNumber(distMatch[1]);
+                distUnit = distMatch[2] || null;
+                distanceFt = unitToFeet(val, distUnit);
+                // remove that trailing distance chunk before bearing parse
+                s = s.slice(0, distMatch.index).trim();
+            }
+
+            // ---------- parse line bearing ----------
+            // Now s should mostly be the bearing text like: N31°06'10"E
+            // Also allow missing EW in some older inputs? (you had that earlier)
+            // For modern use, require both ends. If missing EW, infer as before.
+            let bearingText = s;
+
+            // If bearing missing final EW, infer (legacy behavior)
+            const endsWithEW = /[EW]$/.test(bearingText);
+            if (!endsWithEW) {
+                const startNS = bearingText.match(/^\s*([NS])/);
+                if (startNS) {
+                    bearingText = bearingText + ((startNS[1] === 'N') ? 'E' : 'W');
+                }
+            }
+
+            const bParsed = parseBearingOnly(bearingText);
+            if (!bParsed) return null;
+
+            // If distance missing entirely, treat as invalid (or return 0). Your old parser defaulted to 0.
+            if (!Number.isFinite(distanceFt)) distanceFt = 0;
+
+            return {
+                kind: 'line',
+                distance: distanceFt,     // feet
+                deg: bParsed.deg,
+                min: bParsed.min,
+                sec: bParsed.sec,
+                azimuth: bParsed.azimuth,
+                ns: bParsed.ns,
+                ew: bParsed.ew
+            };
+        }
+
+
+
+
+        function quadrantToAzimuth(start, deg, min, sec, end) {
+            const angle = deg + min / 60 + sec / 3600;
+            if (start === 'N' && end === 'E') return angle;
+            if (start === 'N' && end === 'W') return 360 - angle;
+            if (start === 'S' && end === 'E') return 180 - angle;
+            if (start === 'S' && end === 'W') return 180 + angle;
+            return null;
+        }
+
+        function calculatePolygonArea(segments) {
+
+            let x = 0, y = 0;
+            let area2 = 0; // twice signed area (shoelace)
+            let currentAzimuth = null;
+
+            for (const seg of segments) {
+
+                // ---------- LINE ----------
+                if (seg.kind === 'line') {
+
+                    const az = seg.azimuth * Math.PI / 180;
+                    const dx = seg.distance * Math.sin(az);
+                    const dy = -seg.distance * Math.cos(az);
+
+                    const x2 = x + dx;
+                    const y2 = y + dy;
+
+                    // shoelace contribution
+                    area2 += (x * y2 - x2 * y);
+
+                    x = x2;
+                    y = y2;
+                    currentAzimuth = seg.azimuth;
+                    continue;
+                }
+
+                // ---------- CURVE ----------
+                if (seg.kind === 'curve' && currentAzimuth != null) {
+
+                    const R = seg.radiusFt;
+                    const arc = seg.arcFt;
+                    const theta = arc / R; // radians
+                    const deltaDeg = theta * 180 / Math.PI;
+
+                    // chord endpoint
+                    const midAz =
+                        seg.direction === 'R'
+                            ? currentAzimuth + deltaDeg / 2
+                            : currentAzimuth - deltaDeg / 2;
+
+                    const chord = 2 * R * Math.sin(theta / 2);
+                    const midRad = midAz * Math.PI / 180;
+
+                    const x2 = x + chord * Math.sin(midRad);
+                    const y2 = y - chord * Math.cos(midRad);
+
+                    // shoelace contribution from chord
+                    area2 += (x * y2 - x2 * y);
+
+                    // circular segment area
+                    const curveArea =
+                        (R * R / 2) * (theta - Math.sin(theta));
+
+                    // right curve subtracts, left curve adds
+                    area2 += seg.direction === 'L'
+                        ? +curveArea
+                        : -curveArea;
+
+                    // advance azimuth
+                    currentAzimuth =
+                        seg.direction === 'R'
+                            ? (currentAzimuth + deltaDeg) % 360
+                            : (currentAzimuth - deltaDeg + 360) % 360;
+
+                    x = x2;
+                    y = y2;
+                    continue;
+                }
+            }
+
+            const absArea = Math.abs(area2) / 2;
+
+            return {
+                squareFeet: absArea,
+                acres: absArea / 43560
+            };
+        }
+
+
+        //function calculatePolygonArea(segments) {
+        //    let x = 0, y = 0;
+        //    const pts = [[x, y]];
+        //    for (const seg of segments) {
+        //        const az = seg.azimuth * Math.PI / 180;
+        //        const dx = seg.distance * Math.sin(az);
+        //        const dy = -seg.distance * Math.cos(az);
+        //        x += dx; y += dy;
+        //        pts.push([x, y]);
+        //    }
+        //    let area = 0;
+        //    for (let i = 0; i < pts.length - 1; i++) {
+        //        const [x1, y1] = pts[i];
+        //        const [x2, y2] = pts[i + 1];
+        //        area += (x1 * y2 - x2 * y1);
+        //    }
+        //    const absArea = Math.abs(area) / 2;
+        //    return { squareFeet: absArea, acres: absArea / 43560 };
+        //}
+
+        
+
+        function resizeCanvasToDisplaySize2() {
+
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const rect = canvas.getBoundingClientRect();
+            //const dpr = window.devicePixelRatio || 1;
+
+            // Match drawing buffer to CSS size
+            canvas.width = Math.round(rect.width);
+            canvas.height = Math.round(720);
+
+            // Normalize drawing coordinates to CSS pixels
+            //ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function resizeCanvasToDisplaySize() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+
+            // Set backing store size (REAL pixels)
+            const displayWidth = Math.round(rect.width * dpr);
+            const displayHeight = Math.round(rect.height * dpr);
+
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+
+                // Normalize coordinate system to CSS pixels
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+        }
+
+
+        const view = {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            isPanning: false,
+            startX: 0,
+            startY: 0
+        };
+
+        let lastSegments = [];
+
+        function applyViewTransform(x, y) {
+            return [
+                x * view.scale + view.offsetX,
+                y * view.scale + view.offsetY
+            ];
+        }
+
+        function resetView() {
+            view.scale = 1;
+            view.offsetX = 0;
+            view.offsetY = 0;
+        }
+
+
+        function setCanvasControls2() {
+            const canvas = document.getElementById('drawingCanvas');
+
+            canvas.addEventListener('mouseenter', () => {
+                canvas.style.cursor = 'grab';
+            });
+
+            window.addEventListener('keydown', e => {
+                if (e.key === 'r' || e.key === 'R') {
+                    resetView();
+                    drawPath(lastSegments);
+                }
+            });
+
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+
+                const zoomIntensity = 0.0015;
+                const zoom = 1 - e.deltaY * zoomIntensity;
+
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Convert mouse to world space
+                const wx = (mouseX - view.offsetX) / view.scale;
+                const wy = (mouseY - view.offsetY) / view.scale;
+
+                view.scale *= zoom;
+                view.scale = Math.max(0.1, Math.min(view.scale, 20));
+
+                // Re-center zoom at mouse
+                view.offsetX = mouseX - wx * view.scale;
+                view.offsetY = mouseY - wy * view.scale;
+
+                drawPath(lastSegments); // or pass segments directly
+            }, { passive: false });
+
+            canvas.addEventListener('mousedown', e => {
+                view.isPanning = true;
+                view.startX = e.clientX - view.offsetX;
+                view.startY = e.clientY - view.offsetY;
+                canvas.style.cursor = 'grabbing';
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (!view.isPanning) return;
+
+                view.offsetX = e.clientX - view.startX;
+                view.offsetY = e.clientY - view.startY;
+
+                drawPath(lastSegments);
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                view.isPanning = false;
+                canvas.style.cursor = 'default';
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                view.isPanning = false;
+                canvas.style.cursor = 'default';
+            });
+
+        }
+
+        function setCanvasControls() {
+            const canvas = document.getElementById('drawingCanvas');
+
+            /* -----------------------
+               Desktop behavior
+            ------------------------ */
+
+            canvas.addEventListener('mouseenter', () => {
+                canvas.style.cursor = 'grab';
+            });
+
+            window.addEventListener('keydown', e => {
+                if (e.key === 'r' || e.key === 'R') {
+                    resetView();
+                    drawPath(lastSegments);
+                }
+            });
+
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+
+                const zoomIntensity = 0.0015;
+                const zoom = 1 - e.deltaY * zoomIntensity;
+
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                zoomAtPoint(mouseX, mouseY, zoom);
+            }, { passive: false });
+
+            canvas.addEventListener('mousedown', e => {
+                view.isPanning = true;
+                view.startX = e.clientX - view.offsetX;
+                view.startY = e.clientY - view.offsetY;
+                canvas.style.cursor = 'grabbing';
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (!view.isPanning) return;
+
+                view.offsetX = e.clientX - view.startX;
+                view.offsetY = e.clientY - view.startY;
+                drawPath(lastSegments);
+            });
+
+            canvas.addEventListener('mouseup', endPan);
+            canvas.addEventListener('mouseleave', endPan);
+
+            function endPan() {
+                view.isPanning = false;
+                canvas.style.cursor = 'default';
+            }
+
+            /* -----------------------
+               Mobile / Touch support
+            ------------------------ */
+
+            let lastTouchDistance = null;
+            let lastTouchCenter = null;
+
+            canvas.addEventListener('touchstart', e => {
+                e.preventDefault();
+
+                if (e.touches.length === 1) {
+                    // One finger pan
+                    const t = e.touches[0];
+                    view.isPanning = true;
+                    view.startX = t.clientX - view.offsetX;
+                    view.startY = t.clientY - view.offsetY;
+                }
+
+                if (e.touches.length === 2) {
+                    lastTouchDistance = touchDistance(e.touches);
+                    lastTouchCenter = touchCenter(e.touches);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', e => {
+                e.preventDefault();
+
+                // One finger pan
+                if (e.touches.length === 1 && view.isPanning) {
+                    const t = e.touches[0];
+                    view.offsetX = t.clientX - view.startX;
+                    view.offsetY = t.clientY - view.startY;
+                    drawPath(lastSegments);
+                }
+
+                // Two finger pinch zoom
+                if (e.touches.length === 2) {
+                    const newDistance = touchDistance(e.touches);
+                    const zoom = newDistance / lastTouchDistance;
+
+                    const center = touchCenter(e.touches);
+                    const rect = canvas.getBoundingClientRect();
+                    const cx = center.x - rect.left;
+                    const cy = center.y - rect.top;
+
+                    zoomAtPoint(cx, cy, zoom);
+
+                    lastTouchDistance = newDistance;
+                    lastTouchCenter = center;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', () => {
+                view.isPanning = false;
+                lastTouchDistance = null;
+                lastTouchCenter = null;
+            });
+
+            /* -----------------------
+               Helpers
+            ------------------------ */
+
+            function zoomAtPoint(x, y, zoomFactor) {
+                const wx = (x - view.offsetX) / view.scale;
+                const wy = (y - view.offsetY) / view.scale;
+
+                view.scale *= zoomFactor;
+                view.scale = Math.max(0.1, Math.min(view.scale, 20));
+
+                view.offsetX = x - wx * view.scale;
+                view.offsetY = y - wy * view.scale;
+
+                drawPath(lastSegments);
+            }
+
+            function touchDistance(touches) {
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                return Math.hypot(dx, dy);
+            }
+
+            function touchCenter(touches) {
+                return {
+                    x: (touches[0].clientX + touches[1].clientX) / 2,
+                    y: (touches[0].clientY + touches[1].clientY) / 2
+                };
+            }
+        }
+
+
+        function drawPath(segments) {
+
+            lastSegments = segments;
+
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            resizeCanvasToDisplaySize();
+
+            //let x = 0, y = 0;
+            //const raw = [[x, y]];
+            //for (const seg of segments) {
+            //    const az = seg.azimuth * Math.PI / 180;
+            //    const dx = seg.distance * Math.sin(az);
+            //    const dy = -seg.distance * Math.cos(az);
+            //    x += dx; y += dy;
+            //    raw.push([x, y]);
+            //}
+
+            
+
+            let x = 0, y = 0;
+            const drawOps = [];
+            let currentAzimuth = null;
+
+            drawOps.push({ type: 'move', x, y });
+
+            for (const seg of segments) {
+
+                // ---------- LINE ----------
+                if (seg.kind === 'line') {
+                    const azRad = seg.azimuth * Math.PI / 180;
+                    const d = seg.distance;
+
+                    const dx = d * Math.sin(azRad);
+                    const dy = -d * Math.cos(azRad);
+
+                    const x2 = x + dx;
+                    const y2 = y + dy;
+
+                    drawOps.push({
+                        type: 'line',
+                        x1: x, y1: y,
+                        x2, y2
+                    });
+
+                    x = x2;
+                    y = y2;
+                    currentAzimuth = seg.azimuth;
+                    continue;
+                }
+
+                // ---------- CURVE ----------
+                if (seg.kind === 'curve' && currentAzimuth != null) {
+
+                    const R = seg.radiusFt;
+                    const arc = seg.arcFt;
+                    const theta = arc / R;               // radians
+                    const deltaDeg = theta * 180 / Math.PI;
+
+                    // Mid-curve azimuth
+                    const midAz =
+                        seg.direction === 'R'
+                            ? currentAzimuth + deltaDeg / 2
+                            : currentAzimuth - deltaDeg / 2;
+
+                    // Chord length
+                    const chord = 2 * R * Math.sin(theta / 2);
+
+                    const midRad = midAz * Math.PI / 180;
+
+                    const x2 = x + chord * Math.sin(midRad);
+                    const y2 = y - chord * Math.cos(midRad);
+
+                    // Curve center (survey geometry)
+                    const centerAz =
+                        seg.direction === 'R'
+                            ? currentAzimuth + 90
+                            : currentAzimuth - 90;
+
+                    const cRad = centerAz * Math.PI / 180;
+
+                    const cx = x + R * Math.sin(cRad);
+                    const cy = y - R * Math.cos(cRad);
+
+                    drawOps.push({
+                        type: 'arc',
+                        cx, cy,
+                        r: R,
+                        direction: seg.direction,
+                        x1: x, y1: y,   // start point
+                        x2, y2       // end point (already computed)
+                    });
+
+                    x = x2;
+                    y = y2;
+
+                    currentAzimuth =
+                        seg.direction === 'R'
+                            ? (currentAzimuth + deltaDeg) % 360
+                            : (currentAzimuth - deltaDeg + 360) % 360;
+
+                    continue;
+                }
+            }
+
+            // ---------- compute drawing bounds (lines + arcs) ----------
+            let minX = Infinity, minY = Infinity;
+            let maxX = -Infinity, maxY = -Infinity;
+
+            for (const op of drawOps) {
+
+                if (op.type === 'move') {
+                    minX = Math.min(minX, op.x);
+                    minY = Math.min(minY, op.y);
+                    maxX = Math.max(maxX, op.x);
+                    maxY = Math.max(maxY, op.y);
+                }
+
+                else if (op.type === 'line') {
+                    minX = Math.min(minX, op.x1, op.x2);
+                    minY = Math.min(minY, op.y1, op.y2);
+                    maxX = Math.max(maxX, op.x1, op.x2);
+                    maxY = Math.max(maxY, op.y1, op.y2);
+                }
+
+                else if (op.type === 'arc') {
+                    // conservative bounds: full circle box
+                    minX = Math.min(minX, op.cx - op.r);
+                    minY = Math.min(minY, op.cy - op.r);
+                    maxX = Math.max(maxX, op.cx + op.r);
+                    maxY = Math.max(maxY, op.cy + op.r);
+                }
+            }
+
+            // prevent divide-by-zero
+            const w = Math.max(1, maxX - minX);
+            const h = Math.max(1, maxY - minY);
+
+            // ---------- scale & center ----------
+            const padding = 40;
+
+            const scaleX = (canvas.width - 2 * padding) / w;
+            const scaleY = (canvas.height - 2 * padding) / h;
+            const scale = Math.min(scaleX, scaleY);
+
+            const offsetX = (canvas.width - w * scale) / 2 - minX * scale;
+            const offsetY = (canvas.height - h * scale) / 2 - minY * scale;
+
+            function tx(x, y) {
+                const p = applyViewTransform(
+                    x * scale + offsetX,
+                    y * scale + offsetY
+                );
+                return p;
+            }
+
+            function tr(r) {
+                // radius must scale with BOTH base scale and zoom
+                return r * scale * view.scale;
+            }
+
+            //const xs = raw.map(p => p[0]), ys = raw.map(p => p[1]);
+            //const minX = Math.min(...xs), maxX = Math.max(...xs);
+            //const minY = Math.min(...ys), maxY = Math.max(...ys);
+            //const w = maxX - minX, h = maxY - minY;
+
+            //const padding = 40;
+            //const scaleX = (canvas.width - 2 * padding) / w;
+            //const scaleY = (canvas.height - 2 * padding) / h;
+            //const scale = Math.min(scaleX, scaleY);
+            //const offsetX = (canvas.width - w * scale) / 2 - minX * scale;
+            //const offsetY = (canvas.height - h * scale) / 2 - minY * scale;
+
+            //const pts = raw.map(p => [p[0] * scale + offsetX, p[1] * scale + offsetY]);
+            //const basePts = raw.map(p => [
+            //    p[0] * scale + offsetX,
+            //    p[1] * scale + offsetY
+            //]);
+
+            //const pts = basePts.map(p => applyViewTransform(p[0], p[1]));
+
+
+            ctx.beginPath();
+
+            for (const op of drawOps) {
+
+                if (op.type === 'move') {
+                    const [px, py] = tx(op.x, op.y);
+                    ctx.moveTo(px, py);
+                }
+
+                else if (op.type === 'line') {
+                    const [x1, y1] = tx(op.x1, op.y1);
+                    const [x2, y2] = tx(op.x2, op.y2);
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                }
+
+                else if (op.type === 'arc') {
+
+                    // Canvas-space center
+                    const [cx, cy] = tx(op.cx, op.cy);
+                    const r = tr(op.r); // correct radius
+
+                    // Start & end points in canvas space
+                    const [sx, sy] = tx(op.x1, op.y1);
+                    const [ex, ey] = tx(op.x2, op.y2);
+
+                    // Angles from center to start/end points
+                    const startAngle = Math.atan2(sy - cy, sx - cx);
+                    const endAngle = Math.atan2(ey - cy, ex - cx);
+
+                    // Direction
+                    const anticlockwise = (op.direction === 'L');
+
+                    ctx.arc(
+                        cx,
+                        cy,
+                        r,
+                        startAngle,
+                        endAngle,
+                        anticlockwise
+                    );
+                }
+            }
+
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+
+            // Build endpoint list aligned with segments[]
+            //const segPts = []; // [{ x, y, seg }]
+            //let currX = null, currY = null;
+            //let segIndex = 0;
+
+            //for (const op of drawOps) {
+
+            //    if (op.type === 'move') {
+            //        [currX, currY] = tx(op.x, op.y);
+            //        continue;
+            //    }
+
+            //    if (op.type === 'line') {
+            //        const [x2, y2] = tx(op.x2, op.y2);
+            //        segPts.push({
+            //            x1: currX,
+            //            y1: currY,
+            //            x2,
+            //            y2,
+            //            seg: segments[segIndex++]
+            //        });
+            //        currX = x2;
+            //        currY = y2;
+            //        continue;
+            //    }
+
+            //    if (op.type === 'arc') {
+            //        // endpoint of arc = last point of previous op
+            //        // we already advanced x/y during drawOps creation
+            //        const [x2, y2] = tx(currX, currY);
+            //        segPts.push({
+            //            x1: currX,
+            //            y1: currY,
+            //            x2,
+            //            y2,
+            //            seg: segments[segIndex++]
+            //        });
+            //        currX = x2;
+            //        currY = y2;
+            //        continue;
+            //    }
+            //}
+
+            // ---------- build segment point list with arc geometry ----------
+            const segPts = []; // [{ x1,y1,x2,y2,cx,cy,r,startAngle,endAngle,seg }]
+            let currX = null, currY = null;
+            let segIndex = 0;
+
+            for (const op of drawOps) {
+
+                if (op.type === 'move') {
+                    [currX, currY] = tx(op.x, op.y);
+                    continue;
+                }
+
+                if (op.type === 'line') {
+                    const [x2, y2] = tx(op.x2, op.y2);
+
+                    segPts.push({
+                        x1: currX,
+                        y1: currY,
+                        x2,
+                        y2,
+                        seg: segments[segIndex++]
+                    });
+
+                    currX = x2;
+                    currY = y2;
+                    continue;
+                }
+
+                if (op.type === 'arc') {
+
+                    const [cx, cy] = tx(op.cx, op.cy);
+                    const r = tr(op.r);
+
+                    const [sx, sy] = tx(op.x1, op.y1);
+                    const [ex, ey] = tx(op.x2, op.y2);
+
+                    const startAngle = Math.atan2(sy - cy, sx - cx);
+                    const endAngle = Math.atan2(ey - cy, ex - cx);
+
+                    segPts.push({
+                        x1: sx,
+                        y1: sy,
+                        x2: ex,
+                        y2: ey,
+                        cx,
+                        cy,
+                        r,
+                        startAngle,
+                        endAngle,
+                        direction: op.direction,
+                        seg: segments[segIndex++]
+                    });
+
+                    currX = ex;
+                    currY = ey;
+                    continue;
+                }
+            }
+
+            // ----- draw vertices -----
+            segPts.forEach((p, i) => {
+                ctx.fillStyle = p.seg?.hasRTK ? 'green' : 'orange';
+                ctx.beginPath();
+                ctx.arc(p.x2, p.y2, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // start point
+            if (segPts.length > 0) {
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(segPts[0].x1, segPts[0].y1, 5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // end point
+            const last = segPts[segPts.length - 1];
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(last.x2, last.y2, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            //ctx.font = '12px Arial';
+            //ctx.fillStyle = '#111';
+            //ctx.textAlign = 'center';
+            //ctx.textBaseline = 'middle';
+
+            //for (const p of segPts) {
+
+            //    const { x1, y1, x2, y2, seg } = p;
+
+            //    const midX = (x1 + x2) / 2;
+            //    const midY = (y1 + y2) / 2;
+
+            //    const dx = x2 - x1;
+            //    const dy = y2 - y1;
+
+            //    let angle = Math.atan2(dy, dx);
+            //    if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+            //        angle += Math.PI;
+            //    }
+
+            //    let label = '';
+
+            //    if (seg.kind === 'line' && Number.isFinite(seg.distance)) {
+            //        label = `${seg.distance.toFixed(2)} ft`;
+            //    }
+            //    else if (seg.kind === 'curve' && Number.isFinite(seg.arcFt)) {
+            //        label = `ARC ${seg.arcFt.toFixed(2)} ft`;
+            //    }
+
+            //    if (!label) continue;
+
+            //    ctx.save();
+            //    ctx.translate(midX, midY);
+            //    ctx.rotate(angle);
+            //    ctx.fillText(label, 0, -10);
+            //    ctx.restore();
+            //}
+
+            // ---------- draw distance / arc labels ----------
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#111';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            let idx = 0;
+
+            for (const p of segPts) {
+
+                const { seg } = p;
+                //let label = '';
+
+                //if (seg.kind === 'line' && Number.isFinite(seg.distance)) {
+                //    label = `${seg.distance.toFixed(2)} ft`;
+                //}
+                //else if (seg.kind === 'curve' && Number.isFinite(seg.arcFt)) {
+                //    label = `ARC ${seg.arcFt.toFixed(2)} ft`;
+                //}
+
+                //label += ` (${seg.deedText})`
+
+                //if (seg.comment?.length > 0)
+                //    label += ` - ${seg.comment?.substring(0, Math.min(10, seg.comment.length))}`
+                
+                //if (!label) continue;
+
+                const labelLines = [];
+
+                //if (seg.kind === 'line' && Number.isFinite(seg.distance)) {
+                //    labelLines.push(`${seg.distance.toFixed(2)} ft`);
+                //}
+                //else if (seg.kind === 'curve' && Number.isFinite(seg.arcFt)) {
+                //    labelLines.push(`ARC ${seg.arcFt.toFixed(2)} ft`);
+                //}
+
+                labelLines.push(`#${++idx}`);
+
+                if (seg.deedText) {
+                    labelLines.push(seg.deedText);
+                }
+
+                if (seg.comment?.length > 0) {
+                    labelLines.push(seg.comment);
+                }
+
+                if (labelLines.length === 0) continue;
+
+                let labelX, labelY, angle;
+
+                // ---------- LINE LABEL ----------
+                if (seg.kind === 'line') {
+
+                    const { x1, y1, x2, y2 } = p;
+
+                    labelX = (x1 + x2) / 2;
+                    labelY = (y1 + y2) / 2;
+
+                    angle = Math.atan2(y2 - y1, x2 - x1);
+                    if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+                        angle += Math.PI;
+                    }
+                }
+
+                // ---------- CURVE LABEL ----------
+                else if (seg.kind === 'curve') {
+
+                    const { cx, cy, r, startAngle, endAngle, direction } = p;
+
+                    // mid-arc angle
+                    let midAngle;
+                    if (direction === 'L') {
+                        midAngle = startAngle + (endAngle - startAngle) / 2;
+                    } else {
+                        midAngle = startAngle - (startAngle - endAngle) / 2;
+                    }
+
+                    // point ON arc
+                    labelX = cx + r * Math.cos(midAngle);
+                    labelY = cy + r * Math.sin(midAngle);
+
+                    // rotate tangent to curve
+                    angle = midAngle + (direction === 'L' ? Math.PI / 2 : -Math.PI / 2);
+                }
+
+                ctx.save();
+                ctx.translate(labelX, labelY);
+                ctx.rotate(angle);
+                //ctx.fillText(label, 0, -10);
+
+                const lineHeight = 14;  // px
+                const totalHeight = (labelLines.length) * lineHeight;
+
+                labelLines.forEach((text, i) => {
+                    ctx.fillText(
+                        text,
+                        0,
+                        -14 + i * lineHeight - totalHeight / 2
+                    );
+                });
+
+                ctx.restore();
+            }
+
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#b91c1c';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            for (const p of segPts) {
+                const seg = p.seg;
+                if (!seg?.hasRTK || !isFinite(seg.distError)) continue;
+
+                const label = `${Number(seg.distError).toFixed(2)} ft`;
+
+                ctx.fillText(
+                    label,
+                    p.x2 + 10,
+                    p.y2
+                );
+            }
+
+
+            //for (let i = 1; i < pts.length; i++) {
+
+            //    ctx.fillStyle = segments.length > i - 1 ? (segments[i - 1].hasRTK ? 'green' : 'orange') : 'cyan';
+            //    ctx.beginPath();
+            //    ctx.arc(pts[i][0], pts[i][1], 5, 0, 2 * Math.PI);
+            //    ctx.fill();
+
+            //}
+
+            //ctx.fillStyle = 'red';
+            //ctx.beginPath();
+            //ctx.arc(pts[0][0], pts[0][1], 5, 0, 2 * Math.PI);
+            //ctx.fill();
+
+            //ctx.fillStyle = 'red';
+            //ctx.beginPath();
+            //ctx.arc(pts[pts.length - 1][0], pts[pts.length - 1][1], 5, 0, 2 * Math.PI);
+            //ctx.fill();
+
+            //// ----- draw distance labels -----
+            //ctx.font = '12px Arial';
+            //ctx.fillStyle = '#111';
+            //ctx.textAlign = 'center';
+            //ctx.textBaseline = 'middle';
+
+            //for (let i = 1; i < pts.length; i++) {
+            //    const [x1, y1] = pts[i - 1];
+            //    const [x2, y2] = pts[i];
+
+            //    const midX = (x1 + x2) / 2;
+            //    const midY = (y1 + y2) / 2;
+
+            //    const dx = x2 - x1;
+            //    const dy = y2 - y1;
+
+            //    let angle = Math.atan2(dy, dx);
+
+            //    // Keep text upright
+            //    if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+            //        angle += Math.PI;
+            //    }
+
+            //    //const label = segments[i - 1].distance.toFixed(2) + ' ft';
+
+            //    const seg = segments[i - 1];
+
+            //    let label = '';
+
+            //    if (seg.kind === 'line' && Number.isFinite(seg.distance)) {
+            //        label = `${seg.distance.toFixed(2)} ft`;
+            //    }
+            //    else if (seg.kind === 'curve' && Number.isFinite(seg.arcFt)) {
+            //        label = `ARC ${seg.arcFt.toFixed(2)} ft`;
+            //    }
+
+            //    ctx.save();
+            //    ctx.translate(midX, midY);
+            //    ctx.rotate(angle);
+            //    ctx.fillText(label, 0, -10); // offset slightly above line
+            //    ctx.restore();
+            //}
+
+            //// ----- draw distance error labels -----
+            //ctx.font = '12px Arial';
+            //ctx.fillStyle = '#b91c1c'; // red-ish, survey-friendly
+            //ctx.textAlign = 'left';
+            //ctx.textBaseline = 'middle';
+
+            //const errorOffsetX = 10; // pixels to the right of point
+            //const errorOffsetY = 0;
+
+            //for (let i = 1; i < pts.length; i++) {
+            //    const seg = segments[i - 1];
+            //    if (!seg || seg.distError == null || !seg.hasRTK) continue;
+
+            //    const err = Number(seg.distError);
+            //    if (!isFinite(err)) continue;
+
+            //    const [px, py] = pts[i];
+
+            //    const label = `${err.toFixed(2)} ft`;
+
+            //    ctx.fillText(
+            //        label,
+            //        px + errorOffsetX,
+            //        py + errorOffsetY
+            //    );
+            //}
+
+            //// ----- distance error statistics (top-left HUD) -----
+            //const errors = segments
+            //    .filter(v => v.hasRTK)
+            //    .map(s => Number(s.distError))
+            //    .filter(v => isFinite(v));
+
+            //if (errors.length > 0) {
+            //    const minErr = Math.min(...errors);
+            //    const maxErr = Math.max(...errors);
+            //    const avgErr = errors.reduce((a, b) => a + b, 0) / errors.length;
+
+            //    const lines = [
+            //        `Min Error: ${minErr.toFixed(2)} ft`,
+            //        `Max Error: ${maxErr.toFixed(2)} ft`,
+            //        `Avg Error: ${avgErr.toFixed(2)} ft`
+            //    ];
+
+            //    // HUD styling
+            //    ctx.save();
+
+            //    ctx.font = '13px Arial';
+            //    ctx.textAlign = 'left';
+            //    ctx.textBaseline = 'top';
+
+            //    const padding = 8;
+            //    const lineHeight = 16;
+
+            //    // Measure widest line
+            //    let maxWidth = 0;
+            //    for (const line of lines) {
+            //        maxWidth = Math.max(maxWidth, ctx.measureText(line).width);
+            //    }
+
+            //    const boxWidth = maxWidth + padding * 2;
+            //    const boxHeight = lines.length * lineHeight + padding * 2;
+
+            //    // Background box
+            //    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            //    ctx.fillRect(10, 10, boxWidth, boxHeight);
+
+            //    ctx.strokeStyle = '#999';
+            //    ctx.lineWidth = 1;
+            //    ctx.strokeRect(10, 10, boxWidth, boxHeight);
+
+            //    // Text
+            //    ctx.fillStyle = '#111';
+            //    lines.forEach((line, i) => {
+            //        ctx.fillText(
+            //            line,
+            //            10 + padding,
+            //            10 + padding + i * lineHeight
+            //        );
+            //    });
+
+            //    ctx.restore();
+            //}
+
+            // ----- distance error statistics (top-left HUD) -----
+            const errors = segments
+                .filter(s =>
+                    s.hasRTK &&
+                    s.distError != null
+                )
+                .map(s => Number(s.distError))
+                .filter(v => Number.isFinite(v));
+
+            if (errors.length > 0) {
+
+                const minErr = Math.min(...errors);
+                const maxErr = Math.max(...errors);
+                const avgErr = errors.reduce((a, b) => a + b, 0) / errors.length;
+
+                const rmsErr = Math.sqrt(
+                    errors.reduce((sum, e) => sum + e * e, 0) / errors.length
+                );
+
+                const lines = [
+                    `RTK Points: ${errors.length}`,
+                    `Min Error: ${minErr.toFixed(2)} ft`,
+                    `Max Error: ${maxErr.toFixed(2)} ft`,
+                    `Avg Error: ${avgErr.toFixed(2)} ft`,
+                    `RMS Error: ${rmsErr.toFixed(2)} ft`
+                ];
+
+                ctx.save();
+
+                ctx.font = '13px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+
+                const padding = 8;
+                const lineHeight = 16;
+
+                let maxWidth = 0;
+                for (const line of lines) {
+                    maxWidth = Math.max(maxWidth, ctx.measureText(line).width);
+                }
+
+                const boxWidth = maxWidth + padding * 2;
+                const boxHeight = lines.length * lineHeight + padding * 2;
+
+                // Background box
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillRect(10, 10, boxWidth, boxHeight);
+
+                ctx.strokeStyle = '#999';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(10, 10, boxWidth, boxHeight);
+
+                // Text
+                ctx.fillStyle = '#111';
+                lines.forEach((line, i) => {
+                    ctx.fillText(
+                        line,
+                        10 + padding,
+                        10 + padding + i * lineHeight
+                    );
+                });
+
+                ctx.restore();
+            }
+        }
+
+        function polygonCentroidLatLon(points) {
+            if (points.length < 3) return points[0];
+
+            const lat0 = points[0][0];
+            const lon0 = points[0][1];
+            const R = 6378137;
+
+            // convert to local EN
+            const pts = points.map(([lat, lon]) => {
+                const x = (lon - lon0) * Math.cos(lat0 * Math.PI / 180) * R;
+                const y = (lat - lat0) * R;
+                return { x, y };
+            });
+
+            let A = 0, Cx = 0, Cy = 0;
+
+            for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+                const cross = pts[j].x * pts[i].y - pts[i].x * pts[j].y;
+                A += cross;
+                Cx += (pts[j].x + pts[i].x) * cross;
+                Cy += (pts[j].y + pts[i].y) * cross;
+            }
+
+            A *= 0.5;
+
+            if (Math.abs(A) < 1e-8) return points[0];
+
+            Cx /= (6 * A);
+            Cy /= (6 * A);
+
+            // back to lat/lon
+            const centroidLat = lat0 + (Cy / R) * 180 / Math.PI;
+            const centroidLon = lon0 + (Cx / (R * Math.cos(lat0 * Math.PI / 180))) * 180 / Math.PI;
+
+            return [centroidLat, centroidLon];
+        }
+
+
+        function gridToGroundFactor(elevationMeters, earthRadius = 6378137) {
+            return earthRadius / (earthRadius + elevationMeters);
+        }
+
+        function elevationFactorMeters(elevMeters, R = 6378137) {
+            return R / (R + elevMeters);
+        }
+
+        async function fetchElevationMeters(lat, lon) {
+            const res = await fetch(
+                `https://845.ddns.net/SimpleFetcher/Elevation.ashx?lat=${lat}&lon=${lon}`
+            );
+
+            const json = await res.json();
+
+            return json?.value ?? 0;
+        }
+
+        function latLonToEN(lat, lon, lat0, lon0) {
+            const R = 6378137;
+            const dLat = (lat - lat0) * Math.PI / 180;
+            const dLon = (lon - lon0) * Math.PI / 180;
+
+            const E = dLon * Math.cos(lat0 * Math.PI / 180) * R;
+            const N = dLat * R;
+
+            return { E, N };
+        }
+
+        function ENToLatLon(E, N, lat0, lon0) {
+            const R = 6378137;
+
+            const lat = lat0 + (N / R) * 180 / Math.PI;
+            const lon = lon0 + (E / (R * Math.cos(lat0 * Math.PI / 180))) * 180 / Math.PI;
+
+            return { lat, lon };
+        }
+
+        function adjustLatLonPoints(points) {
+            if (points.length < 3) return points;
+
+            const lat0 = points[0][0];
+            const lon0 = points[0][1];
+
+            // Convert to EN
+            const en = points.map(p => latLonToEN(p[0], p[1], lat0, lon0));
+
+            // Compute legs + total length
+            let legs = [];
+            let totalLen = 0;
+
+            for (let i = 1; i < en.length; i++) {
+                const dE = en[i].E - en[i - 1].E;
+                const dN = en[i].N - en[i - 1].N;
+                const len = Math.hypot(dE, dN);
+
+                legs.push({ dE, dN, len });
+                totalLen += len;
+            }
+
+            // Misclosure
+            const misE = en[en.length - 1].E - en[0].E;
+            const misN = en[en.length - 1].N - en[0].N;
+
+            // Apply Bowditch correction
+            let adjEN = [{ E: 0, N: 0 }];
+
+            let accE = 0;
+            let accN = 0;
+
+            legs.forEach((leg, i) => {
+                const cE = -misE * (leg.len / totalLen);
+                const cN = -misN * (leg.len / totalLen);
+
+                accE += leg.dE + cE;
+                accN += leg.dN + cN;
+
+                adjEN.push({ E: accE, N: accN });
+            });
+
+            // Back to lat/lon
+            return adjEN.map(p => {
+                const ll = ENToLatLon(p.E, p.N, lat0, lon0);
+                return [ll.lat, ll.lon];
+            });
+        }
+
+
+
+        function horizontalDistanceMeters(lat1, lon1, lat2, lon2) {
+            lat1 = parseFloat(lat1);
+            lon1 = parseFloat(lon1);
+            lat2 = parseFloat(lat2);
+            lon2 = parseFloat(lon2);
+
+            if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return NaN;
+
+            const R = 6378137.0; // WGS-84 equatorial radius (meters)
+
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+
+            const meanLat = toRad((lat1 + lat2) / 2);
+
+            // Local tangent plane
+            const north = dLat * R;
+            const east = dLon * R * Math.cos(meanLat);
+
+            return Math.sqrt(north * north + east * east);
+        }
+
+        function feetToMeters(ft) {
+            return ft * 0.3048;
+        }
+
+        function curveEndpoint({
+            originLat,
+            originLon,
+            azimuthDeg,
+            radiusFt,
+            arcFt,
+            direction,
+            magneticDeclinationDeg,
+            csf
+        }) {
+            // Central angle (radians)
+            const theta = arcFt / radiusFt;
+
+            // Radius & arc in meters (grid)
+            const radiusMeters = feetToMeters(radiusFt) * csf;
+            const arcMeters = feetToMeters(arcFt) * csf;
+
+            // Direction of rotation
+            const deltaDeg = theta * 180 / Math.PI;
+            const endAz =
+                direction === 'R'
+                    ? (azimuthDeg + deltaDeg) % 360
+                    : (azimuthDeg - deltaDeg + 360) % 360;
+
+            // Chord length
+            const chordMeters =
+                2 * radiusMeters * Math.sin(theta / 2);
+
+            // Mid-chord azimuth
+            const midAz =
+                direction === 'R'
+                    ? azimuthDeg + deltaDeg / 2
+                    : azimuthDeg - deltaDeg / 2;
+
+            // True azimuth
+            const azTrue = (midAz + magneticDeclinationDeg + 360) % 360;
+
+            // Forward geodesic
+            return {
+                point: vincentyDirect(
+                    originLat,
+                    originLon,
+                    azTrue,
+                    chordMeters
+                ),
+                endAzimuth: endAz
+            };
+        }
+
+        function localizeToRTK(
+            latLonPoints,
+            rtkPairs,
+            { solveScale = false } = {}
+        ) {
+
+            if (rtkPairs.length < 2) return latLonPoints;
+
+            // --- Anchor (fixed) ---
+            const A = rtkPairs[0];
+
+            // --- Choose farthest RTK pair for rotation + scale ---
+            let B = rtkPairs[1];
+            let maxDist = 0;
+
+            for (let i = 1; i < rtkPairs.length; i++) {
+                const d = horizontalDistanceMeters(
+                    A.rtk.lat, A.rtk.lon,
+                    rtkPairs[i].rtk.lat, rtkPairs[i].rtk.lon
+                );
+                if (d > maxDist) {
+                    maxDist = d;
+                    B = rtkPairs[i];
+                }
+            }
+
+            // --- Vector helpers (planar assumption, small area) ---
+            function vec(a, b) {
+                return {
+                    x: b.lat - a.lat,
+                    y: b.lon - a.lon
+                };
+            }
+
+            function mag(v) {
+                return Math.hypot(v.x, v.y);
+            }
+
+            // --- Projected + RTK vectors ---
+            const vProj = vec(A.proj, B.proj);
+            const vRTK = vec(A.rtk, B.rtk);
+
+            // --- Rotation ---
+            const bearingProj = Math.atan2(vProj.y, vProj.x);
+            const bearingRTK = Math.atan2(vRTK.y, vRTK.x);
+            const θ = bearingRTK - bearingProj;
+
+            const cosθ = Math.cos(θ);
+            const sinθ = Math.sin(θ);
+
+            // --- Scale solve (optional) ---
+            let scale = 1.0;
+
+            if (solveScale) {
+                const lenProj = mag(vProj);
+                const lenRTK = mag(vRTK);
+
+                if (lenProj > 0) {
+                    scale = lenRTK / lenProj;
+                }
+            }
+
+            // --- Apply transform ---
+            return latLonPoints.map(([lat, lon]) => {
+
+                // translate to projected anchor
+                const dx = lat - A.proj.lat;
+                const dy = lon - A.proj.lon;
+
+                // rotate
+                const rx = dx * cosθ - dy * sinθ;
+                const ry = dx * sinθ + dy * cosθ;
+
+                // scale
+                const sx = rx * scale;
+                const sy = ry * scale;
+
+                // translate to RTK anchor
+                return [
+                    A.rtk.lat + sx,
+                    A.rtk.lon + sy
+                ];
+            });
+        }
+
+
+        let lastLatLonPoints = [];  // store lat/lon for download
+        let rows = [];
+
+        async function convert() {
+
+            const btn = document.getElementById('convertBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Converting…';
+            }
+
+            try {
+
+                let lines = document.getElementById('deedInput').value.trim().split('\n');
+
+                const useLSQ = document.getElementById('lsqToggle')?.checked;
+
+                const distancesAreGround =
+                    document.getElementById('useGroundDistances')?.checked;
+
+                const reportGroundDistances =
+                    document.getElementById('reportGroundDistances')?.checked;
+
+                const csf =
+                    parseFloat(document.getElementById('csfInput')?.value) ||
+                    NY_EAST_DEFAULT_CSF;
+
+                const enableRTKLocalization = document.getElementById('useRTKFit')?.checked ?? false;
+
+                const enableRTKLocalizationScale = document.getElementById('useRTKScale')?.checked ?? false;
+
+                const epochDeclination = parseFloat(document.getElementById('declInput').value) || 0;
+                let currentLat = parseFloat(document.getElementById('latInput').value);
+                let currentLon = parseFloat(document.getElementById('lonInput').value);
+                let hasStart = Number.isFinite(currentLat) && Number.isFinite(currentLon);
+
+                const segments = [];
+                
+
+                let projectedRTKPairs = [];
+
+                let startIdx = 0;
+
+                lastLatLonPoints = [];
+                rows = [];
+
+                if (!hasStart) {
+                    
+                    for (const rawLine of lines) {
+                        const [lineWithoutComment, comment] = rawLine.split('#', 2).map(s => s.trim());
+                        const parts = lineWithoutComment.split(',').map(s => s.trim());
+
+                        const deedText = parts[0];
+                        const rtkLat = parseFloat(parts[1]);
+                        const rtkLon = parseFloat(parts[2]);
+                        const hasRTK = Number.isFinite(rtkLat) && Number.isFinite(rtkLon);
+
+                        if (hasRTK) {
+                            if (startIdx === 0)
+                                startIdx = 1;
+
+                            currentLat = rtkLat;
+                            currentLon = rtkLon;
+
+                            hasStart = true;
+                            console.log('Starting at RTK point:', currentLat, currentLon);
+                            break;
+                        }
+
+                        startIdx++;
+                    }
+
+                    if (hasStart)
+                        lines = [
+                            ...lines.slice(startIdx),
+                            ...lines.slice(0, startIdx)
+                        ];
+                }
+
+                if (hasStart)
+                    lastLatLonPoints.push([currentLat, currentLon]);
+                 
+                let index = 0;
+                let currentAzimuth = null;
+
+                for (const rawLine of lines) {
+                    // Strip trailing hashtag comment (if any)
+                    const [lineWithoutComment, comment] = rawLine.split('#', 2).map(s => s.trim());
+
+                    const parts = lineWithoutComment.split(',').map(s => s.trim());
+                    const deedText = parts[0];
+                    const rtkLat = parseFloat(parts[1]);
+                    const rtkLon = parseFloat(parts[2]);
+                    const hasRTK = Number.isFinite(rtkLat) && Number.isFinite(rtkLon);
+
+                    const result = parseBearingAndDistance(deedText);
+                    if (!result) continue;
+
+                    result.deedText = deedText;
+
+                    //let distanceMeters = result.distance * 0.3048;
+                    //if (distancesAreGround) {
+                    //    // ground → grid (elevation applied later)
+                    //    distanceMeters = distanceMeters * csf;
+                    //}
+
+                    // --- compute next point GEODETICALLY ---
+                    let nextPoint = null;
+
+                    if (hasStart) {
+
+                        if (result.kind === 'line') {
+
+                            currentAzimuth = result.azimuth;
+
+                            nextPoint = computeSurveyPoint({
+                                originLat: currentLat,
+                                originLon: currentLon,
+
+                                bearingNS: result.ns,
+                                bearingDeg: result.deg,
+                                bearingMin: result.min,
+                                bearingSec: result.sec,
+                                bearingEW: result.ew,
+
+                                gridDistanceMeters: feetToMeters(result.distance),
+                                magneticDeclinationDeg: epochDeclination
+                            });
+
+                        } else if (result.kind === 'curve') {
+
+                            if (currentAzimuth == null) {
+                                throw new Error('Curve encountered without prior tangent');
+                            }
+
+                            const curve = curveEndpoint({
+                                originLat: currentLat,
+                                originLon: currentLon,
+                                azimuthDeg: currentAzimuth,
+                                radiusFt: result.radiusFt,
+                                arcFt: result.arcFt,
+                                direction: result.direction,
+                                magneticDeclinationDeg: epochDeclination,
+                                csf
+                            });
+
+                            nextPoint = curve.point;
+                            currentAzimuth = curve.endAzimuth;
+                        }
+
+                        if (nextPoint) {
+                            currentLat = nextPoint.lat;
+                            currentLon = nextPoint.lon;
+                            lastLatLonPoints.push([currentLat, currentLon]);
+                        }
+
+                    }
+
+                    // --- distance error vs RTK ---
+                    let distError = 0;
+                    if (hasRTK && nextPoint) {
+
+                        const metersErr = horizontalDistanceMeters(
+                            nextPoint.lat,
+                            nextPoint.lon,
+                            rtkLat,
+                            rtkLon
+                        );
+                        distError = (metersErr * 3.28084).toFixed(2);
+
+                        projectedRTKPairs.push({
+                            proj: { lat: nextPoint.lat, lon: nextPoint.lon },
+                            rtk: { lat: rtkLat, lon: rtkLon }
+                        });
+                    }
+
+                    rows.push({
+                        idx: ++index,
+                        deedText,
+
+                        magAz:
+                            result.kind === 'line'
+                                ? result.azimuth
+                                : currentAzimuth ?? null,
+
+                        trueAz:
+                            result.kind === 'line'
+                                ? (result.azimuth + epochDeclination + 360) % 360
+                                : (currentAzimuth != null
+                                    ? (currentAzimuth + epochDeclination + 360) % 360
+                                    : null),
+
+                        distFt:
+                            result.kind === 'line'
+                                ? result.distance
+                                : result.kind === 'curve'
+                                    ? result.arcFt
+                                    : null,
+
+                        projectedText: nextPoint
+                            ? `${nextPoint.lat.toFixed(10)}, ${nextPoint.lon.toFixed(10)}`
+                            : '',
+
+                        rtkText: hasRTK ? `${parts[1]}, ${parts[2]}` : '',
+                        distErrorText: distError || '',
+                        distError: distError,
+                        rtkLat,
+                        rtkLon,
+                        hasRTK,
+                        comment,
+                        projectedLat: nextPoint?.lat,
+                        projectedLon: nextPoint?.lon
+                    });
+
+                    result.hasRTK = hasRTK;
+                    result.distError = distError || 0;
+                    result.distErrorText = distError ? distError : '';
+                    result.comment = comment;
+                    result.projectedLat = nextPoint?.lat;
+                    result.projectedLon = nextPoint?.lon;
+
+                    segments.push(result);
+                }
+
+
+                
+
+
+                // ---------- RE-RUN TRAVERSE IF DISTANCES ARE GROUND ----------
+                if (distancesAreGround && hasStart) {
+                    //currentLat = parseFloat(document.getElementById('latInput').value);
+                    //currentLon = parseFloat(document.getElementById('lonInput').value);
+
+                    // ---------- DEM ELEVATION / SCALE FACTOR ----------
+                    //let elevFactor = 1;
+
+                    //if (
+                    //    (distancesAreGround || reportGroundDistances) &&
+                    //    lastLatLonPoints.length > 2
+                    //) {
+                    //    const [cLat, cLon] = polygonCentroidLatLon(lastLatLonPoints);
+
+                    //    const elevMeters = await fetchElevationMeters(cLat, cLon);
+                    //    elevFactor = elevationFactorMeters(elevMeters);
+                    //}
+
+                    lastLatLonPoints = [[currentLat, currentLon]];
+                    projectedRTKPairs = [];
+
+                    let rowIdx = 0;
+
+                    for (const s of segments) {
+
+                        let p = null;
+
+                        if (s.kind === 'line') {
+
+                            const groundMeters = s.distance * 0.3048;
+                            const gridMeters = groundMeters * csf;
+
+                            currentAzimuth = s.azimuth;
+
+                            p = computeSurveyPoint({
+                                originLat: currentLat,
+                                originLon: currentLon,
+                                bearingNS: s.ns,
+                                bearingDeg: s.deg,
+                                bearingMin: s.min,
+                                bearingSec: s.sec,
+                                bearingEW: s.ew,
+                                gridDistanceMeters: gridMeters,
+                                magneticDeclinationDeg: epochDeclination
+                            });
+
+                        } else if (s.kind === 'curve') {
+
+                            const curve = curveEndpoint({
+                                originLat: currentLat,
+                                originLon: currentLon,
+                                azimuthDeg: currentAzimuth,
+                                radiusFt: s.radiusFt,
+                                arcFt: s.arcFt,
+                                direction: s.direction,
+                                magneticDeclinationDeg: epochDeclination,
+                                csf
+                            });
+
+                            p = curve.point;
+                            currentAzimuth = curve.endAzimuth;
+                        }
+
+                        if (!p) continue;
+
+                        currentLat = p.lat;
+                        currentLon = p.lon;
+
+                        lastLatLonPoints.push([currentLat, currentLon]);
+
+                        const metersErr = rows[rowIdx].hasRTK
+                            ? horizontalDistanceMeters(
+                                p.lat,
+                                p.lon,
+                                rows[rowIdx].rtkLat,
+                                rows[rowIdx].rtkLon
+                            )
+                            : 0;
+
+                        rows[rowIdx].distError =
+                            rows[rowIdx].hasRTK
+                                ? (metersErr * 3.28084).toFixed(2)
+                                : 0;
+
+                        rows[rowIdx].distErrorText = rows[rowIdx].hasRTK ? rows[rowIdx].distError : '';
+                        rows[rowIdx].projectedText = `${p.lat.toFixed(10)}, ${p.lon.toFixed(10)}`;
+                        rows[rowIdx].projectedLat = p.lat;
+                        rows[rowIdx].projectedLon = p.lon;
+
+                        s.distError = rows[rowIdx].distError;
+                        s.distErrorText = rows[rowIdx].distErrorText;
+                        s.projectedText = rows[rowIdx].projectedText;
+                        s.projectedLat = p.lat;
+                        s.projectedLon = p.lon;
+
+                        if (rows[rowIdx].hasRTK) {
+                            projectedRTKPairs.push({
+                                proj: { lat: p.lat, lon: p.lon },
+                                rtk: { lat: rows[rowIdx].rtkLat, lon: rows[rowIdx].rtkLon }
+                            });
+                        }
+
+                        rowIdx++;
+                    }
+
+                }
+
+                // ---------- RTK Localization (OPTIONAL) ----------
+                if (enableRTKLocalization && projectedRTKPairs.length >= 2) {
+                    lastLatLonPoints = localizeToRTK(
+                        lastLatLonPoints,
+                        projectedRTKPairs,
+                        { solveScale: enableRTKLocalizationScale }
+                    );
+
+                    // Update segment + row projections
+                    let i = 0;
+                    for (const s of segments) {
+
+                        const metersErr = rows[i].hasRTK
+                            ? horizontalDistanceMeters(
+                                lastLatLonPoints[i+1][0],
+                                lastLatLonPoints[i+1][1],
+                                rows[i].rtkLat,
+                                rows[i].rtkLon
+                            )
+                            : 0;
+
+                        rows[i].distError =
+                            rows[i].hasRTK
+                                ? (metersErr * 3.28084).toFixed(2)
+                                : 0;
+
+                        rows[i].distErrorText = rows[i].hasRTK ? rows[i].distError : '';
+
+                        s.distError = rows[i].distError;
+                        s.distErrorText = rows[i].distErrorText;
+                        s.projectedLat = lastLatLonPoints[i+1][0];
+                        s.projectedLon = lastLatLonPoints[i+1][1];
+                        s.projectedText = `${s.projectedLat.toFixed(10)}, ${s.projectedLon.toFixed(10)}`;
+
+                        rows[i].projectedText = s.projectedText;
+                        rows[i].projectedLat = s.projectedLat;
+                        rows[i].projectedLon = s.projectedLon;
+
+                        i++;
+                    }
+                }
+
+                // ---------- LEAST SQUARES (OPTIONAL) ----------
+                if (useLSQ && lastLatLonPoints.length > 2) {
+                    const adjusted = adjustLatLonPoints(lastLatLonPoints);
+
+                    let i = 1;
+                    rows.forEach(r => {
+                        if (r.projectedText && adjusted[i]) {
+                            const p = adjusted[i];
+                            r.projectedText = `${p[0].toFixed(10)}, ${p[1].toFixed(10)}`;
+
+                            const metersErr = r.hasRTK ? horizontalDistanceMeters(
+                                p[0],
+                                p[1],
+                                r.rtkLat,
+                                r.rtkLon
+                            ) : 0;
+
+                            r.distError = r.hasRTK ? (metersErr * 3.28084).toFixed(2) : 0;
+                            r.distErrorText = r.hasRTK ? r.distError : '';
+
+                            segments[i - 1].distError = r.distError;
+                            segments[i - 1].distErrorText = r.distErrorText;
+                            segments[i - 1].projectedText = r.projectedText;
+                            segments[i - 1].projectedLat = p[0];
+                            segments[i - 1].projectedLon = p[1];
+
+                            i++;
+                        }
+                    });
+
+                    lastLatLonPoints = adjusted;
+                }
+
+                if (startIdx > 0) {
+                    rows = [
+                        ...rows.slice(rows.length - startIdx),
+                        ...rows.slice(0, rows.length - startIdx)
+                    ];
+                }
+
+                // -------- table output --------
+                let html = `
+<table border="1" cellspacing="0" cellpadding="4">
+        <tr>
+        <th>#</th>
+        <th>Deed Call</th>
+        <th>Azimuth (Mag)</th>
+        <th>Azimuth (True)</th>
+        <th>Distance (ft)</th>
+        <th>Projected Lat / Lon</th>
+        <th>RTK Lat / Lon</th>
+        <th>Distance Error (ft)</th>
+        <th>Comment</th>
+        </tr>`;
+
+                rows.forEach(r => {
+
+                    html += `
+        <tr>
+        <td>${r.idx}</td>
+        <td>${r.deedText}</td>
+        <td>${r.magAz.toFixed(4)}°</td>
+        <td>${r.trueAz.toFixed(4)}°</td>
+        <td>${r.distFt.toFixed(2)}</td>
+        <td>${r.projectedText}</td>
+        <td>${r.rtkText}</td>
+        <td>${r.distErrorText}</td>
+        <td>${r.comment || ''}</td>
+        </tr>`;
+                });
+
+                html += `</table>`;
+
+                // -------- area / acres --------
+                const area = calculatePolygonArea(segments);
+                html += `<p><strong>Enclosed Area:</strong>
+            ${area.squareFeet.toFixed(2)} ft²
+            (${area.acres.toFixed(4)} acres)</p>`;
+
+                document.getElementById('output').innerHTML = html;
+
+                drawPath(segments);
+                
+            }  catch (err) {
+                console.log(err);
+            }
+            finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Convert / Plot';
+                }
+            }
+        }
+
+
+
+
+
+
+        function downloadKml_old() {
+            if (!lastLatLonPoints || lastLatLonPoints.length < 2) {
+                alert('No lat/lon points available. First click Convert to generate points.');
+                return;
+            }
+
+            const polygonCoords = lastLatLonPoints
+                .map(([lat, lon]) => `${lon},${lat},0`)
+                .join(' ')
+                + ' '
+                + `${lastLatLonPoints[0][1]},${lastLatLonPoints[0][0]},0`;
+
+            // --- Add visible point markers ---
+            let pointPlacemarks = "";
+            lastLatLonPoints.forEach(([lat, lon], i) => {
+
+                // --- constants ---
+                const feetToMeters = 0.3048;
+                const halfSizeMeters = feetToMeters / 4; // 0.125 ft from center
+
+                // --- meters to degrees ---
+                const metersPerDegLat = 111320;
+                const metersPerDegLon = metersPerDegLat * Math.cos(lat * Math.PI / 180);
+
+                const dLat = halfSizeMeters / metersPerDegLat;
+                const dLon = halfSizeMeters / metersPerDegLon;
+
+                // --- square corners (clockwise, closed ring) ---
+                const p1 = `${lon - dLon},${lat + dLat},0`;
+                const p2 = `${lon + dLon},${lat + dLat},0`;
+                const p3 = `${lon + dLon},${lat - dLat},0`;
+                const p4 = `${lon - dLon},${lat - dLat},0`;
+
+                pointPlacemarks += `
+                        <Placemark>
+                        <name>${i + 1}</name>
+                            <Style>
+                                <PolyStyle>
+                                    <color>ff0000ff</color> <!-- red -->
+                                </PolyStyle>
+                                <LineStyle>
+                                    <width>1</width>
+                                </LineStyle>
+                            </Style>
+                            <Polygon>
+                                <outerBoundaryIs>
+                                    <LinearRing>
+                                        <coordinates>
+                                            ${p1}
+                                            ${p2}
+                                            ${p3}
+                                            ${p4}
+                                            ${p1}
+                                        </coordinates>
+                                    </LinearRing>
+                                </outerBoundaryIs>
+                            </Polygon>
+                        </Placemark>
+                        `;
+            });
+
+            const kml =
+                `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+                        <name>Survey Polygon</name>
+
+                        <Placemark>
+                            <name>Deed Polygon</name>
+                            <Style>
+                                <LineStyle>
+                                    <color>ff0000ff</color>
+                                    <width>2</width>
+                                </LineStyle>
+                                <PolyStyle>
+                                    <fill>0</fill>
+                            <outline>1</outline>
+                                </PolyStyle>
+                            </Style>
+                            <LineString>
+                                <tessellate>1</tessellate>
+                                <coordinates>
+                                    ${polygonCoords}
+                                </coordinates>
+                            </LineString>
+                        </Placemark>
+
+                        ${pointPlacemarks}
+
+</Document>
+</kml>`;
+
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'deed_polygon.kml';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadKml() {
+            if (!lastSegments || !Array.isArray(lastSegments) || lastSegments.length < 1) {
+                alert('No segments available. First click Convert to generate segments.');
+                return;
+            }
+
+            // We need an origin (first projected point). Prefer lastLatLonPoints[0], else infer from first row.
+            if (!lastLatLonPoints || lastLatLonPoints.length < 1) {
+                alert('No lat/lon points available. First click Convert to generate points.');
+                return;
+            }
+
+            const feetToMeters = 0.3048;
+
+            // -------- local ENU (equirectangular) helpers (good for small areas like a parcel) --------
+            const lat0 = lastLatLonPoints[0][0];
+            const lon0 = lastLatLonPoints[0][1];
+            const lat0Rad = lat0 * Math.PI / 180;
+
+            const metersPerDegLat = 111320; // ~
+            const metersPerDegLon = metersPerDegLat * Math.cos(lat0Rad);
+
+            function llToXY(lat, lon) {
+                return {
+                    x: (lon - lon0) * metersPerDegLon,
+                    y: (lat - lat0) * metersPerDegLat
+                };
+            }
+
+            function xyToLL(x, y) {
+                return {
+                    lat: lat0 + (y / metersPerDegLat),
+                    lon: lon0 + (x / metersPerDegLon)
+                };
+            }
+
+            // -------- densify a curve using endpoints + radiusFt (+ arcFt) --------
+            function densifyCurveLatLon({
+                startLat, startLon,
+                endLat, endLon,
+                radiusFt,
+                arcFt,
+                direction // 'R' or 'L' (optional, used to choose which center)
+            }) {
+                const Rm = Number(radiusFt) * feetToMeters;
+                if (!isFinite(Rm) || Rm <= 0) {
+                    // fallback: straight segment
+                    return [{ lat: endLat, lon: endLon }];
+                }
+
+                const p0 = llToXY(startLat, startLon);
+                const p1 = llToXY(endLat, endLon);
+
+                const dx = p1.x - p0.x;
+                const dy = p1.y - p0.y;
+                const c = Math.hypot(dx, dy);
+
+                // If chord > diameter (or nearly), can't fit circle of given radius -> fallback
+                if (!isFinite(c) || c <= 1e-9 || c > 2 * Rm) {
+                    return [{ lat: endLat, lon: endLon }];
+                }
+
+                const mx = (p0.x + p1.x) / 2;
+                const my = (p0.y + p1.y) / 2;
+
+                // left normal (CCW)
+                const nx = -dy / c;
+                const ny = dx / c;
+
+                const half = c / 2;
+                const h = Math.sqrt(Math.max(0, Rm * Rm - half * half));
+
+                // Two possible centers
+                const cLeft = { x: mx + nx * h, y: my + ny * h };
+                const cRight = { x: mx - nx * h, y: my - ny * h };
+
+                // Pick a center.
+                // If direction provided, use it; otherwise pick the smaller central angle implied by arcFt (if present),
+                // else pick the smaller arc between endpoints (default).
+                let center = null;
+
+                // central angle from arc length, if provided
+                const thetaFromArc = (isFinite(arcFt) && Number(arcFt) > 0)
+                    ? (Number(arcFt) * feetToMeters) / Rm
+                    : null;
+
+                function angleFromCenter(ctr) {
+                    const a0 = Math.atan2(p0.y - ctr.y, p0.x - ctr.x);
+                    const a1 = Math.atan2(p1.y - ctr.y, p1.x - ctr.x);
+                    let d = a1 - a0;
+                    // wrap to [-pi, pi]
+                    while (d <= -Math.PI) d += 2 * Math.PI;
+                    while (d > Math.PI) d -= 2 * Math.PI;
+                    return { a0, a1, d };
+                }
+
+                const Aleft = angleFromCenter(cLeft);
+                const Aright = angleFromCenter(cRight);
+
+                if (direction === 'L') {
+                    center = cLeft;
+                } else if (direction === 'R') {
+                    center = cRight;
+                } else if (thetaFromArc != null) {
+                    // choose the center whose |d| best matches thetaFromArc (minor vs major ambiguity)
+                    const dL = Math.abs(Aleft.d);
+                    const dR = Math.abs(Aright.d);
+                    // thetaFromArc could be > pi (major arc). Use closest of {d, 2pi-d}
+                    function bestDiff(d) {
+                        const t = thetaFromArc;
+                        return Math.min(Math.abs(d - t), Math.abs((2 * Math.PI - d) - t));
+                    }
+                    center = bestDiff(dL) <= bestDiff(dR) ? cLeft : cRight;
+                } else {
+                    // default to the smaller turning center (either is fine; choose left)
+                    center = cLeft;
+                }
+
+                const { a0, d } = angleFromCenter(center);
+
+                // Choose sweep magnitude:
+                let theta = null;
+                if (thetaFromArc != null) {
+                    theta = thetaFromArc;
+                } else {
+                    theta = Math.abs(d);
+                }
+
+                // Determine sweep direction (sign) to reach end point.
+                // For chosen center, compute end angle directly and then force sweep to match theta if provided.
+                const aEnd = Math.atan2(p1.y - center.y, p1.x - center.x);
+
+                // Normalize angles for stepping:
+                // We'll step from a0 to aEnd, but if arcFt implies major arc, we may need to go the long way.
+                function normalizeAngle(a) {
+                    while (a <= -Math.PI) a += 2 * Math.PI;
+                    while (a > Math.PI) a -= 2 * Math.PI;
+                    return a;
+                }
+
+                let startA = a0;
+                let endA = aEnd;
+
+                // Decide clockwise vs anticlockwise if direction is given.
+                // Canvas/KML doesn't care; we just need consistent sampling points between endpoints.
+                // If direction is 'R' => clockwise (negative), 'L' => CCW (positive). If not provided, pick shortest.
+                let sweep = normalizeAngle(endA - startA);
+
+                if (direction === 'L') {
+                    if (sweep < 0) sweep += 2 * Math.PI; // force CCW
+                } else if (direction === 'R') {
+                    if (sweep > 0) sweep -= 2 * Math.PI; // force CW
+                } else {
+                    // shortest already
+                }
+
+                // If arcFt implied a different magnitude (major arc), adjust sweep magnitude to match theta.
+                if (thetaFromArc != null) {
+                    const mag = Math.abs(sweep);
+                    const want = thetaFromArc;
+
+                    // We can use either mag or 2pi-mag, choose whichever closer to want.
+                    const alt = 2 * Math.PI - mag;
+
+                    const useAlt = Math.abs(alt - want) < Math.abs(mag - want);
+                    const newMag = useAlt ? alt : mag;
+
+                    // keep sign
+                    sweep = (sweep < 0 ? -newMag : newMag);
+
+                    // recompute endA for stepping
+                    endA = startA + sweep;
+                }
+
+                // Smoothness: use radius to pick step count (smaller step for tighter curves)
+                // ~10ft chord step target, minimum 8 points, cap 200
+                const arcLenM = theta * Rm;
+                const stepTarget = 10 * feetToMeters; // ~10 ft
+                let steps = Math.ceil(arcLenM / stepTarget);
+                steps = Math.max(8, Math.min(200, steps));
+
+                const pts = [];
+                for (let i = 1; i <= steps; i++) {
+                    const t = i / steps;
+                    const ang = startA + sweep * t;
+
+                    const x = center.x + Rm * Math.cos(ang);
+                    const y = center.y + Rm * Math.sin(ang);
+
+                    const ll = xyToLL(x, y);
+                    pts.push({ lat: ll.lat, lon: ll.lon });
+                }
+
+                // Ensure last point matches endpoint exactly (avoid drift)
+                pts[pts.length - 1] = { lat: endLat, lon: endLon };
+
+                return pts;
+            }
+
+            // -------- Build densified path from lastSegments + projectedLat/projectedLon --------
+            const path = [];
+            // start
+            path.push({ lat: lastLatLonPoints[0][0], lon: lastLatLonPoints[0][1] });
+
+            for (let i = 0; i < lastSegments.length; i++) {
+                const seg = lastSegments[i];
+                if (!seg) continue;
+
+                const prev = path[path.length - 1];
+                const endLat = Number(seg.projectedLat);
+                const endLon = Number(seg.projectedLon);
+
+                if (!isFinite(endLat) || !isFinite(endLon)) {
+                    // If projectedLat/Lon missing, skip adding points for this segment
+                    continue;
+                }
+
+                if (seg.kind === 'curve') {
+                    const radiusFt = seg.radiusFt;
+                    const arcFt = seg.arcFt;
+                    const dir = seg.direction; // 'R' or 'L' (if you store it)
+
+                    const densified = densifyCurveLatLon({
+                        startLat: prev.lat,
+                        startLon: prev.lon,
+                        endLat,
+                        endLon,
+                        radiusFt,
+                        arcFt,
+                        direction: dir
+                    });
+
+                    // densified includes endpoint; it excludes start
+                    for (const p of densified) path.push(p);
+                } else {
+                    // line (default)
+                    path.push({ lat: endLat, lon: endLon });
+                }
+            }
+
+            if (path.length < 2) {
+                alert('Not enough points to export KML.');
+                return;
+            }
+
+            // Close ring
+            const polygonCoords = path
+                .map(p => `${p.lon},${p.lat},0`)
+                .join(' ')
+                + ' '
+                + `${path[0].lon},${path[0].lat},0`;
+
+            // --- Add visible point markers ONLY for vertices (not densified points) ---
+            // Vertices are: origin + each segment endpoint
+            const vertices = [];
+            vertices.push({ lat: lastLatLonPoints[0][0], lon: lastLatLonPoints[0][1] });
+            for (const seg of lastSegments) {
+                if (seg && isFinite(seg.projectedLat) && isFinite(seg.projectedLon)) {
+                    vertices.push({ lat: Number(seg.projectedLat), lon: Number(seg.projectedLon) });
+                }
+            }
+
+            let pointPlacemarks = "";
+            vertices.forEach((p, i) => {
+                const lat = p.lat, lon = p.lon;
+
+                const halfSizeMeters = feetToMeters / 4; // 0.125 ft from center
+                const mPerDegLat = 111320;
+                const mPerDegLon = mPerDegLat * Math.cos(lat * Math.PI / 180);
+
+                const dLat = halfSizeMeters / mPerDegLat;
+                const dLon = halfSizeMeters / mPerDegLon;
+
+                const p1 = `${lon - dLon},${lat + dLat},0`;
+                const p2 = `${lon + dLon},${lat + dLat},0`;
+                const p3 = `${lon + dLon},${lat - dLat},0`;
+                const p4 = `${lon - dLon},${lat - dLat},0`;
+
+                pointPlacemarks += `
+<Placemark>
+  <name>${i + 1}</name>
+  <Style>
+    <PolyStyle>
+      <color>ff0000ff</color>
+    </PolyStyle>
+    <LineStyle>
+      <width>1</width>
+    </LineStyle>
+  </Style>
+  <Polygon>
+    <outerBoundaryIs>
+      <LinearRing>
+        <coordinates>
+          ${p1}
+          ${p2}
+          ${p3}
+          ${p4}
+          ${p1}
+        </coordinates>
+      </LinearRing>
+    </outerBoundaryIs>
+  </Polygon>
+</Placemark>`;
+            });
+
+            const kml =
+                `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>Survey Polygon</name>
+
+  <Placemark>
+    <name>Deed Path (Lines + Curves)</name>
+    <Style>
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>2</width>
+      </LineStyle>
+      <PolyStyle>
+        <fill>0</fill>
+        <outline>1</outline>
+      </PolyStyle>
+    </Style>
+    <LineString>
+      <tessellate>1</tessellate>
+      <coordinates>
+        ${polygonCoords}
+      </coordinates>
+    </LineString>
+  </Placemark>
+
+  ${pointPlacemarks}
+
+</Document>
+</kml>`;
+
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'deed_polygon.kml';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeCSV(value) {
+            if (value == null) return '';
+            const s = String(value);
+            return /[",\n]/.test(s)
+                ? `"${s.replace(/"/g, '""')}"`
+                : s;
+        }
+
+        function downloadCSV() {
+
+            if (!rows || !Array.isArray(rows || rows.length < 1)) {
+                alert('No segments available. First click Convert to generate segments.');
+                return;
+            }
+
+            const headers = [
+                'Deed Call',
+                'Azimuth (Mag)',
+                'Azimuth (True)',
+                'Distance (ft)',
+                'Projected Lat / Lon',
+                'RTK Lat / Lon',
+                'Distance Error (ft)',
+                'Comment'
+            ];
+
+            const lines = [];
+
+            // header row
+            lines.push(headers.map(escapeCSV).join(','));
+
+            // data rows
+            rows.forEach(r => {
+
+                lines.push([
+                    r.deedText,
+                    Number.isFinite(r.magAz) ? r.magAz.toFixed(4) : '',
+                    Number.isFinite(r.trueAz) ? r.trueAz.toFixed(4) : '',
+                    Number.isFinite(r.distFt) ? r.distFt.toFixed(2) : '',
+                    r.projectedText,
+                    r.rtkText,
+                    r.distErrorText,
+                    r.comment || ''
+                ].map(escapeCSV).join(','));
+            });
+
+            const csvText = lines.join('\n');
+
+            const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'deed_projection.csv';
+            document.body.appendChild(a);
+            a.click();
+
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+
+        window.addEventListener("load", () => {
+            console.log("Window fully loaded");
+
+
+            // Attach event listeners
+            document.getElementById('convertBtn').addEventListener('click', convert);
+            document.getElementById('calcElevBtn').addEventListener('click', calculateSlopeByElevation);
+            document.getElementById('calcAngleBtn').addEventListener('click', calculateSlopeByAngle);
+            document.getElementById('downloadKmlBtn').addEventListener('click', downloadKml);
+            document.getElementById('downloadCsvBtn').addEventListener('click', downloadCSV);
+
+            window.addEventListener('resize', () => {
+                resizeCanvasToDisplaySize();
+                drawPath(lastSegments);
+            });
+
+
+        });
+
+    </script>
+
+    <script>
+
+        const NY_EAST_DEFAULT_CSF = 0.99990;
+
+        const WGS84 = {
+            a: 6378137.0,                 // semi-major axis (meters)
+            f: 1 / 298.257223563           // flattening
+        };
+
+        function dmsToDecimal(deg, min, sec) {
+            return Math.abs(deg) + min / 60 + sec / 3600;
+        }
+
+        function bearingToAzimuth(ns, deg, min, sec, ew) {
+            const theta = dmsToDecimal(deg, min, sec);
+
+            if (ns === 'N' && ew === 'E') return theta;
+            if (ns === 'N' && ew === 'W') return 360 - theta;
+            if (ns === 'S' && ew === 'E') return 180 - theta;
+            if (ns === 'S' && ew === 'W') return 180 + theta;
+
+            throw new Error('Invalid bearing');
+        }
+
+        /**
+         * Vincenty direct formula (WGS84)
+         * Given a start point, azimuth, and distance, returns destination point.
+         *
+         * @param {number} lat1Deg  Latitude of point 1 (degrees)
+         * @param {number} lon1Deg  Longitude of point 1 (degrees)
+         * @param {number} azDeg    True azimuth at point 1 (degrees)
+         * @param {number} s        Distance (meters)
+         *
+         * @returns {{
+         *   lat: number,
+         *   lon: number,
+         *   finalBearing: number
+         * }}
+         */
+        function vincentyDirect(lat1, lon1, azimuthDeg, distanceMeters, ellipsoid = WGS84) {
+            const { a, f } = ellipsoid;
+            const b = a * (1 - f);
+
+            const φ1 = lat1 * Math.PI / 180;
+            const λ1 = lon1 * Math.PI / 180;
+            const α1 = azimuthDeg * Math.PI / 180;
+
+            const sinα1 = Math.sin(α1);
+            const cosα1 = Math.cos(α1);
+
+            const tanU1 = (1 - f) * Math.tan(φ1);
+            const cosU1 = 1 / Math.sqrt(1 + tanU1 * tanU1);
+            const sinU1 = tanU1 * cosU1;
+
+            const σ1 = Math.atan2(tanU1, cosα1);
+            const sinα = cosU1 * sinα1;
+            const cosSqα = 1 - sinα * sinα;
+
+            const uSq = cosSqα * (a * a - b * b) / (b * b);
+            const A = 1 + uSq / 16384 * (
+                4096 + uSq * (-768 + uSq * (320 - 175 * uSq))
+            );
+            const B = uSq / 1024 * (
+                256 + uSq * (-128 + uSq * (74 - 47 * uSq))
+            );
+
+            let σ = distanceMeters / (b * A);
+            let σP;
+            let iterLimit = 100;
+
+            let cos2σm, sinσ, cosσ, Δσ;
+
+            do {
+                cos2σm = Math.cos(2 * σ1 + σ);
+                sinσ = Math.sin(σ);
+                cosσ = Math.cos(σ);
+                Δσ = B * sinσ * (
+                    cos2σm + B / 4 * (
+                        cosσ * (-1 + 2 * cos2σm * cos2σm) -
+                        B / 6 * cos2σm *
+                        (-3 + 4 * sinσ * sinσ) *
+                        (-3 + 4 * cos2σm * cos2σm)
+                    )
+                );
+                σP = σ;
+                σ = distanceMeters / (b * A) + Δσ;
+            } while (Math.abs(σ - σP) > 1e-12 && --iterLimit > 0);
+
+            if (iterLimit === 0) {
+                throw new Error('Vincenty failed to converge');
+            }
+
+            const tmp = sinU1 * sinσ - cosU1 * cosσ * cosα1;
+            const φ2 = Math.atan2(
+                sinU1 * cosσ + cosU1 * sinσ * cosα1,
+                (1 - f) * Math.sqrt(sinα * sinα + tmp * tmp)
+            );
+
+            const λ = Math.atan2(
+                sinσ * sinα1,
+                cosU1 * cosσ - sinU1 * sinσ * cosα1
+            );
+
+            const C = f / 16 * cosSqα * (4 + f * (4 - 3 * cosSqα));
+            const L = λ - (1 - C) * f * sinα * (
+                σ + C * sinσ * (
+                    cos2σm + C * cosσ * (-1 + 2 * cos2σm * cos2σm)
+                )
+            );
+
+            const λ2 = λ1 + L;
+
+            return {
+                lat: φ2 * 180 / Math.PI,
+                lon: λ2 * 180 / Math.PI
+            };
+        }
+
+        function computeSurveyPoint({
+            originLat,
+            originLon,
+
+            bearingNS,
+            bearingDeg,
+            bearingMin,
+            bearingSec,
+            bearingEW,
+
+            // distance MUST already be GRID meters
+            gridDistanceMeters,
+
+            magneticDeclinationDeg   // East = +, West = −
+        }) {
+
+            // 1) Bearing → magnetic azimuth
+            const azMag = bearingToAzimuth(
+                bearingNS, bearingDeg, bearingMin, bearingSec, bearingEW
+            );
+
+            // 2) Magnetic → true azimuth
+            const azTrue = (azMag + magneticDeclinationDeg + 360) % 360;
+
+            // 3) Forward geodesic (grid distance)
+            return vincentyDirect(originLat, originLon, azTrue, gridDistanceMeters);
+        }
+
+
+    </script>
+
+    <script>
+        const STORAGE_KEY = "surveyToolInputs";
+
+        /* ---------- DEFAULT VALUES ---------- */
+        const DEFAULT_INPUTS = {
+            deedInput: `S52.09.20E 35.05FT
+S50.00.40E 288.97FT
+S51.25.20E 68.97FT
+S55.22.10E 54.69FT
+S63.55.30E 44.54FT
+S71.27.40E 43.37FT
+S77.55.00E 46.77FT
+S81.56.00E 24.26FT#point in line with a stonewall running southwesterly;
+S55.44.25W 504.71FT,41.8420675725,-74.1993527791#stonewall corner
+N16.05.10W 375.85FT,41.8429650379,-74.2000324272#a stonewall corner;
+N62.39.50E 77.20FT
+N16.05.10W 213.18FT#to a point;
+N50.39.50E 16.67FT`,
+            declInput: -13.49,
+            csfInput: 0.99990,
+            latInput: 41.8436491263,
+            lonInput: -74.2001688378,
+            lsqToggle: false,
+            useGroundDistances: true
+        };
+
+        /* ---------- HELPERS ---------- */
+        function getInputs() {
+            return {
+                version: INPUTS_SCHEMA_VERSION,
+                timestamp: new Date().toISOString(),
+                deedInput: document.getElementById("deedInput").value,
+                declInput: document.getElementById("declInput").value,
+                csfInput: document.getElementById("csfInput").value,
+                latInput: document.getElementById("latInput").value,
+                lonInput: document.getElementById("lonInput").value,
+                lsqToggle: document.getElementById("lsqToggle").checked,
+                useGroundDistances: document.getElementById("useGroundDistances").checked
+            };
+        }
+
+        function setInputs(data) {
+            if (!data) return;
+
+            document.getElementById("deedInput").value = data.deedInput ?? "";
+            document.getElementById("declInput").value = data.declInput ?? "";
+            document.getElementById("csfInput").value = data.csfInput ?? "";
+            document.getElementById("latInput").value = data.latInput ?? "";
+            document.getElementById("lonInput").value = data.lonInput ?? "";
+            document.getElementById("lsqToggle").checked = !!data.lsqToggle;
+            document.getElementById("useGroundDistances").checked = !!data.useGroundDistances;
+        }
+
+        /* ---------- SAVE ---------- */
+        function saveInputsToLocalStorage(e, hideAlert) {
+            const inputs = getInputs();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
+
+            if (!hideAlert)
+                alert("Inputs saved to local storage.");
+        }
+
+        /* ---------- LOAD ---------- */
+        function loadInputsFromLocalStorage() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            try {
+                const data = JSON.parse(raw);
+                setInputs(data);
+            } catch {
+                console.warn("Failed to parse saved inputs");
+            }
+        }
+
+        const INPUTS_SCHEMA_VERSION = 1;
+
+        function collectInputs() {
+            return getInputs();
+        }
+
+        function applyInputs(data) {
+            if (!data || data.version !== INPUTS_SCHEMA_VERSION) {
+                alert('Unsupported or invalid input file.');
+                return;
+            }
+
+            setInputs(data);
+        }
+
+
+
+        /* ---------- AUTO LOAD ON PAGE LOAD ---------- */
+        document.addEventListener("DOMContentLoaded", () => {
+            loadInputsFromLocalStorage();
+
+            setCanvasControls();
+
+            /* ---------- LOAD DEFAULTS ---------- */
+            function loadDefaultInputs() {
+                setInputs(DEFAULT_INPUTS);
+                //saveInputsToLocalStorage(null, true);
+            }
+
+            /* ---------- WIRE BUTTONS ---------- */
+            document.getElementById("saveInputsBtn")
+                .addEventListener("click", saveInputsToLocalStorage);
+
+            document.getElementById("loadDefaultsBtn")
+                .addEventListener("click", loadDefaultInputs);
+
+            document.getElementById('downloadInputsBtn')
+                .addEventListener('click', () => {
+
+                    const data = collectInputs();
+                    const json = JSON.stringify(data, null, 2);
+
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'deed-converter-inputs.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    URL.revokeObjectURL(url);
+                });
+
+            document.getElementById('importInputsBtn')
+                .addEventListener('click', () => {
+                    document.getElementById('importInputsFile').click();
+                });
+
+            document.getElementById('importInputsFile')
+                .addEventListener('change', e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+
+                    reader.onload = () => {
+                        try {
+                            const data = JSON.parse(reader.result);
+                            applyInputs(data);
+                        } catch (err) {
+                            alert('Invalid JSON file.');
+                        }
+                    };
+
+                    reader.readAsText(file);
+
+                    // allow re-importing same file
+                    e.target.value = '';
+                });
+
+
+        });
+    </script>
+
+
+</head>
+<body>
+
+    <h2>Deed Bearings → Lat/Lon Converter</h2>
+
+    <div class="toolbar">
+        <button id="saveInputsBtn">💾 Save Inputs</button>
+        <button id="loadDefaultsBtn" class="secondary">♻ Load Demo</button>
+
+        <button type="button" id="downloadInputsBtn">
+            ⬇ Download Inputs (JSON)
+        </button>
+
+        <button type="button" id="importInputsBtn">
+            ⬆ Import Inputs (JSON)
+        </button>
+
+        <input type="file"
+               id="importInputsFile"
+               accept="application/json"
+               style="display:none;" />
+
+    </div>
+
+    <div class="panel">
+        <div class="grid">
+
+
+            <div>
+                <label for="deedInput">Deed Bearings</label>
+                <textarea id="deedInput" placeholder="One per line: N82.22.55W 91.61F"></textarea>
+                <small>
+                    Line Format: {N|S} {D}.{M}[.S] {E|W} {Distance_Feet}[,RTK.Lat,RTK.Lon][#Comment]<br />
+                    Line Example: N82.22.55W 91.61F,42.621,-75.0386#Iron rod<br />
+
+                    <br />
+                    Curve Format: CR={RADIUS} ARC={FEET} {RT||LT}<br />
+                    Curve Example: CR=109.12 ARC=73.56F RT <br />
+
+                    <br />
+                    Note: The RTK.Lat and RTK.Lon fields are optional. When supplied, they should correspond to the destination point associated with the call.
+                </small>
+            </div>
+
+            <div>
+                <label>Example Deed Schedule A description</label>
+                <a href="https://chatgpt.com/share/695a15bc-9ed8-800e-ae9f-c676e4587a30" target="_blank">Parse your deed with this AI prompt</a><br />
+                <pre style="white-space: break-spaces;">Beginning at a point in the center of the existing pavement of the Ridge Road leading from PineBush to Klonsville,
+
+Thence running from said point of beginning along the center of the Ridge Road the following (8) courses and distances:
+
+south 52 deg. 09 min. 20 sec. east 35.05 feet
+south 50 deg. 00 min. 40 sec. east 288.97 feet
+south 51 deg. 25 min. 20 sec. east 68.97 feet
+south 55 deg. 22 min. 10 sec. east 54.69 feet
+south 63 deg. 55 min. 30 sec. east 44.54 feet
+south 71 deg. 27 min. 40 sec. east 43.37 feet
+south 77 deg. 55 min. 00 sec. east 46.77 feet
+south 81 deg. 56 min. 00 sec. east 24.26 feet to a point in line with a stonewall running southwesterly.
+
+Thence running along said stonewall south 55 deg. 44 min. 25 sec. west 504.71 feet to a stonewall corner in the line of lands of William M. Strein & Amanada L. Hope.
+
+Thence running along said lands and along or near a stonewall north 16 deg. 05 min. 10 sec. west 375.85 feet to a ½ inch iron rod at a stonewall corner.
+
+Thence north 62 deg. 39 min. 50 sec. east 77.20 feet to a ½ inch iron rod.
+
+Thence north 16 deg. 05 min. 10 sec. west 213.18 feet to a point.
+
+Thence north 50 deg. 39 min. 50 sec. East 16.67 feet to the point or place of beginning.
+
+Containing 3.097 acres of land more or less.
+</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="grid">
+            <div>
+                <label for="declInput">Declination (° at time of deed)</label>
+                <input id="declInput" type="number" step="0.1">
+                <a href="https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml#declination" target="_blank">NOAA Calculator</a>
+                <small>Only required if deed referenced Magnetic North.</small>
+            </div>
+
+            <div>
+                <label for="csfInput">Combined Scale Factor (CSF)</label>
+                <input id="csfInput" type="number" step="0.0000001">
+            </div>
+
+            <div>
+                <label for="latInput">Start Latitude</label>
+                <input id="latInput" type="number" step="any">
+            </div>
+
+            <div>
+                <label for="lonInput">Start Longitude</label>
+                <input id="lonInput" type="number" step="any">
+            </div>
+        </div>
+
+        <div style="margin-top:12px;">
+            <div class="checkbox">
+                <input type="checkbox" id="lsqToggle">
+                <label for="lsqToggle">Apply least squares adjustment</label>
+            </div>
+
+            <div class="checkbox">
+                <input type="checkbox" id="useGroundDistances">
+                <label for="useGroundDistances">Distances are GROUND</label>
+            </div>
+
+            <div class="checkbox">
+                <input type="checkbox" id="useRTKFit">
+                <label for="useRTKFit">Apply RTK Localization (Rotation + Translation)</label>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="useRTKScale">
+                <label for="useRTKScale">Apply RTK Localization (Scale)</label>
+            </div>
+            <small style="margin-top:0px;">Requires a minimum of 2 RTK points. Best to have two points that are the furthest distance apart. The tool will automatically choose the furthest point from the first known RTK point.</small>
+        </div>
+
+        <div class="actions">
+            <button id="convertBtn">Convert / Plot</button>
+            <button id="downloadKmlBtn" class="secondary">Export KML</button>
+            <button id="downloadCsvBtn" class="secondary">Export CSV</button>
+        </div>
+    </div>
+
+    <div id="mainLayout">
+        <div id="tableWrapper">
+            <div id="output"></div>
+        </div>
+
+        <div id="canvasWrapper">
+            <canvas id="drawingCanvas"></canvas>
+        </div>
+    </div>
+
+    <h3>Slope Distance Utilities</h3>
+
+    <div class="widgets">
+        <div class="widget">
+            <h4>By Elevation Difference</h4>
+            <label>Start Elevation (ft)</label>
+            <input id="elev1" type="number">
+            <label>End Elevation (ft)</label>
+            <input id="elev2" type="number">
+            <label>Horizontal Distance (ft)</label>
+            <input id="horizontalDist1" type="number">
+            <button id="calcElevBtn" style="margin-top:8px;">Calculate</button>
+            <p id="elevResult"></p>
+        </div>
+
+        <div class="widget">
+            <h4>By Slope Angle</h4>
+            <label>Slope Angle (°)</label>
+            <input id="slopeAngle" type="number">
+            <label>Horizontal Distance (ft)</label>
+            <input id="horizontalDist2" type="number">
+            <button id="calcAngleBtn" style="margin-top:8px;">Calculate</button>
+            <p id="angleResult"></p>
+        </div>
+    </div>
+</body>
+</html>
