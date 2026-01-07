@@ -219,6 +219,24 @@
             max-width: 100%;
         }
 
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+            .toolbar .github-link {
+                margin-left: auto;
+            }
+
+        .toolbar a.github-link {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-decoration: none;
+            color: inherit;
+        }
+
         /* =========================
    Mobile layout adjustments
    ========================= */
@@ -2574,6 +2592,9 @@
                 return;
             }
 
+            const hex = document.getElementById('kmlColorHex').value || '#ff0000';
+            const kmlColor = hexToColor(hex);
+
             const feetToMeters = 0.3048;
 
             // -------- local ENU (equirectangular) helpers (good for small areas like a parcel) --------
@@ -2828,7 +2849,7 @@
             vertices.forEach((p, i) => {
                 const lat = p.lat, lon = p.lon;
 
-                const halfSizeMeters = feetToMeters / 4; // 0.125 ft from center
+                const halfSizeMeters = feetToMeters / 1;
                 const mPerDegLat = 111320;
                 const mPerDegLon = mPerDegLat * Math.cos(lat * Math.PI / 180);
 
@@ -2845,7 +2866,7 @@
   <name>${i + 1}</name>
   <Style>
     <PolyStyle>
-      <color>ff0000ff</color>
+      <color>${kmlColor}</color>
     </PolyStyle>
     <LineStyle>
       <width>1</width>
@@ -2877,7 +2898,7 @@
     <name>Deed Path (Lines + Curves)</name>
     <Style>
       <LineStyle>
-        <color>ff0000ff</color>
+        <color>${kmlColor}</color>
         <width>2</width>
       </LineStyle>
       <PolyStyle>
@@ -3229,6 +3250,24 @@ N50.39.50E 16.67FT`,
             setInputs(data);
         }
 
+        function hexToColor(hex) {
+            const opacity01 = 1;
+            // Accept "#RRGGBB" only (simple + predictable)
+            const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+            if (!m) return "ffffffff"; // default: opaque white
+
+            const rr = m[1].slice(0, 2);
+            const gg = m[1].slice(2, 4);
+            const bb = m[1].slice(4, 6);
+
+            // clamp opacity 0..1 and convert to AA
+            const op = Math.max(0, Math.min(1, Number(opacity01)));
+            const aa = Math.round(op * 255).toString(16).padStart(2, '0');
+
+            // KML expects AABBGGRR
+            return (aa + bb + gg + rr).toLowerCase();
+        }
+
 
 
         /* ---------- AUTO LOAD ON PAGE LOAD ---------- */
@@ -3296,6 +3335,19 @@ N50.39.50E 16.67FT`,
                     e.target.value = '';
                 });
 
+            const picker = document.getElementById('kmlColorPicker');
+            const hexBox = document.getElementById('kmlColorHex');
+
+            picker.addEventListener('input', () => {
+                hexBox.value = picker.value.toLowerCase();
+            });
+
+            hexBox.addEventListener('input', () => {
+                const v = hexBox.value.trim().toLowerCase();
+                if (/^#([0-9a-f]{6})$/.test(v)) {
+                    picker.value = v;
+                }
+            });
 
         });
     </script>
@@ -3323,6 +3375,36 @@ N50.39.50E 16.67FT`,
                accept="application/json"
                style="display:none;" />
 
+        <a href="https://github.com/AndrewR74/Deed-Plotter/tree/main"
+           target="_blank"
+           class="github-link">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 viewBox="0 0 16 16"
+                 width="16"
+                 height="16"
+                 aria-hidden="true"
+                 style="vertical-align: middle; margin-right: 6px;">
+                <path fill="currentColor"
+                      d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47
+              7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49
+              -2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82
+              -1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58
+              1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28
+              -.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+              0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08
+              -2.12 0 0 .67-.21 2.2.82.64-.18 1.32
+              -.27 2-.27.68 0 1.36.09 2 .27
+              1.53-1.04 2.2-.82 2.2-.82.44
+              1.1.16 1.92.08 2.12.51.56.82
+              1.27.82 2.15 0 3.07-1.87
+              3.75-3.65 3.95.29.25.54.73.54
+              1.48 0 1.07-.01 1.93-.01
+              2.2 0 .21.15.46.55.38A8.013
+              8.013 0 0 0 16 8c0-4.42
+              -3.58-8-8-8Z" />
+            </svg>
+            GitHub
+        </a>
     </div>
 
     <div class="panel">
@@ -3399,6 +3481,17 @@ Containing 3.097 acres of land more or less.
             <div>
                 <label for="lonInput">Start Longitude</label>
                 <input id="lonInput" type="number" step="any">
+            </div>
+
+            <div>
+                <label>
+                    KML Line Color:
+                </label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="color" id="kmlColorPicker" value="#ff0000">
+                    <input type="text" id="kmlColorHex" value="#ff0000" style="width:90px;" />
+                </div>
+                
             </div>
         </div>
 
